@@ -54,7 +54,7 @@ namespace InventoryManagementSystem.Services
                 {
                     license.Status = "Locked";
                     license.Type = "None";
-                    license.LicenseToken = null;
+                    license.LicenseToken = string.Empty;
                 }
 
                 // 2. Validate existing license key if present

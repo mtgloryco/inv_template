@@ -1,0 +1,49 @@
+In an Inventory Management System (IMS), analytics are designed to answer three critical questions for a business owner:
+
+"What do I need to buy right now?" (Inventory Optimization)
+"What is actually making me money?" (Profitability)
+"What is costing me money to hold?" (Dead Stock/Waste)
+Since your system already uses a Batch-based tracking system (with 
+PurchaseBatch
+ and 
+SaleBatchUsage
+), you are actually set up to generate Enterprise-grade analytics that most simple apps cannot do.
+
+Here is how these systems work and how you can implement them with your current database:
+
+1. Reorder Point & demand Forecasting
+The Problem: "I ran out of Coca-Cola on Friday and lost sales." or "I bought too much milk and it expired." The Solution:
+
+Sales Velocity: Calculate the average daily sales for a product over the last 30 days.
+Safety Stock: Keep a buffer for sudden spikes.
+Formula: Reorder Point = (Average Daily Usage × Lead Time Days) + Safety Stock
+How you can do it: Query your 
+StockMovement
+ table where MovementType = 'OUT' for the last 30 days.
+
+If Product A sold 300 units in 30 days (10/day) and takes 5 days to arrive, you alert the user when Stock < 50.
+
+2. Exact Profit Margin Analysis (FIFO)
+The Problem: "I sold a laptop for $500. Did I make money?" (If you bought it for $400 last month, yes. If you bought it for $550 yesterday, no.) The Solution: Because you have 
+SaleBatchUsage
+, you know exactly which incoming batch fulfilled which sale.
+
+Revenue: StockMovement.QuantityChanged * UnitPrice
+Exact Cost (COGS): Sum(SaleBatchUsage.QuantityUsed * PurchaseBatch.CostPerUnit)
+Net Profit: Revenue - COGS.
+How you can do it: Most systems guess "Average Cost." Your system can show a report: "You sold 10 units. 5 came from the old cheap batch ($10 cost), 5 came from the new expensive batch ($12 cost). Your true margin is calculated precisely."
+
+3. ABC Analysis (The 80/20 Rule)
+The Problem: "I have limited cash. Which items should I prioritize buying?" The Solution: categorize inventory into three buckets:
+
+A-Items (High Value): Top 20% of items that bring 80% of revenue. Never run out of these.
+B-Items (Moderate): Steady sellers.
+C-Items (Low Value): Slow movers. Don't tie up cash here.
+4. Dead Stock Report
+The Problem: "I have $5,000 worth of phone cases that haven't sold in 6 months." The Solution: Identify items where StockQuantity > 0 but LastSaleDate is > 90 days ago.
+
+Action for User: Discount these items to clear cash for "A-Items".
+Recommended Next Step
+Your database schema is already "Analytics Ready." We could create a DashboardServiceImpl that runs these calculations.
+
+Would you like to implement a logical "Dashboard Metrics" query to see these numbers in your app? (e.g., "Top 5 Selling Items", "Low Stock Alerts", "Today's Gross Profit")
