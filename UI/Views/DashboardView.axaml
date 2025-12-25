@@ -23,6 +23,17 @@
                     <Button Grid.Column="1" Command="{Binding LoadDashboardDataCommand}" Content="Refresh" Background="Transparent" Foreground="#007ACC" BorderThickness="0"/>
                 </Grid>
 
+                <!-- Low Stock Alert -->
+                <Border Background="#FFEBEE" BorderBrush="#FF5252" BorderThickness="1" CornerRadius="8" Padding="15" IsVisible="{Binding LowStockCount}">
+                    <Grid ColumnDefinitions="Auto, *">
+                        <TextBlock Text="⚠️" FontSize="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Low Stock Warning" FontWeight="Bold" Foreground="#D32F2F"/>
+                            <TextBlock Text="{Binding LowStockCount, StringFormat='{}{0} items are running low on stock. Check Inventory.'}" Foreground="#D32F2F" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- Financial Cards -->
                 <Grid ColumnDefinitions="*,15,*,15,*" RowDefinitions="Auto">
                     <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
@@ -73,56 +84,51 @@
 
                 <!-- Quick Actions -->
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Quick Actions" FontSize="18" FontWeight="SemiBold" Foreground="#333"/>
-                    <WrapPanel Orientation="Horizontal">
-                        <Button Command="{Binding OpenAddProductModalCommand}" IsEnabled="{Binding CanAddProduct}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
+                    <TextBlock Text="{Binding Language.Resources[QuickActions]}" FontWeight="Bold" FontSize="18" Foreground="#333"/>
+                    <StackPanel Orientation="Horizontal" Spacing="30">
+                         <Button Classes="action-btn" Command="{Binding OpenAddProductModal}">
+                             <StackPanel>
                                  <TextBlock Text="+" FontSize="24" HorizontalAlignment="Center" Foreground="#007ACC"/>
-                                 <TextBlock Text="Add Product" FontWeight="Medium"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button Command="{Binding OpenStockModalCommand}" CommandParameter="IN" IsEnabled="{Binding CanStockMove}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-                                 <TextBlock Text="⬇" FontSize="20" HorizontalAlignment="Center" Foreground="#4CAF50"/>
-                                 <TextBlock Text="Stock IN" FontWeight="Medium"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button Command="{Binding OpenStockModalCommand}" CommandParameter="OUT" IsEnabled="{Binding CanStockMove}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-                                 <TextBlock Text="⬆" FontSize="20" HorizontalAlignment="Center" Foreground="#FF5252"/>
-                                 <TextBlock Text="Stock OUT" FontWeight="Medium"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button Command="{Binding RunBulkImportCommand}" IsEnabled="{Binding CanBulkImport}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-                                 <TextBlock Text="📂" FontSize="20" HorizontalAlignment="Center" Foreground="#FF9800"/>
-                                 <TextBlock Text="Bulk Import" FontWeight="Medium"/>
-                            </StackPanel>
-                            <ToolTip.Tip>Import Products from CSV (Premium)</ToolTip.Tip>
-                        </Button>
-
-                        <Button Command="{Binding GoToReportsCommand}" IsEnabled="{Binding CanViewReports}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-                                 <TextBlock Text="📊" FontSize="20" HorizontalAlignment="Center" Foreground="#9C27B0"/>
-                                 <TextBlock Text="Reports" FontWeight="Medium"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button Command="{Binding GoToPOSCommand}" IsEnabled="{Binding CanStockMove}" Width="140" Height="90" Margin="0,0,15,15" Background="White" CornerRadius="6">
-                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-                                 <TextBlock Text="🛒" FontSize="20" HorizontalAlignment="Center" Foreground="#4CAF50"/>
-                                 <TextBlock Text="Cashier / POS" FontWeight="Medium"/>
-                            </StackPanel>
-                        </Button>
-                    </WrapPanel>
+                                 <TextBlock Text="{Binding Language.Resources[AddProduct]}" FontSize="12"/>
+                             </StackPanel>
+                         </Button>
+                         <Button Classes="action-btn" Command="{Binding OpenStockModal}" CommandParameter="IN">
+                             <StackPanel>
+                                 <TextBlock Text="⬇" FontSize="24" HorizontalAlignment="Center" Foreground="#2E7D32"/>
+                                 <TextBlock Text="{Binding Language.Resources[StockIN]}" FontSize="12"/>
+                             </StackPanel>
+                         </Button>
+                         <Button Classes="action-btn" Command="{Binding OpenStockModal}" CommandParameter="OUT">
+                             <StackPanel>
+                                 <TextBlock Text="⬆" FontSize="24" HorizontalAlignment="Center" Foreground="#D32F2F"/>
+                                 <TextBlock Text="{Binding Language.Resources[StockOUT]}" FontSize="12"/>
+                             </StackPanel>
+                         </Button>
+                         <Button Classes="action-btn" Command="{Binding RunBulkImport}" IsEnabled="{Binding CanBulkImport}" Opacity="{Binding CanBulkImport, Converter={x:Static ObjectConverters.IsNull}}"> 
+                             <StackPanel>
+                                 <TextBlock Text="📂" FontSize="24" HorizontalAlignment="Center" Foreground="#FF9800"/>
+                                 <TextBlock Text="{Binding Language.Resources[BulkImport]}" FontSize="12"/>
+                             </StackPanel>
+                             <ToolTip.Tip>Import Products from CSV (Premium)</ToolTip.Tip>
+                         </Button>
+                         <Button Classes="action-btn" Command="{Binding GoToReportsCommand}" IsEnabled="{Binding CanViewReports}">
+                             <StackPanel>
+                                 <TextBlock Text="📊" FontSize="24" HorizontalAlignment="Center" Foreground="#607D8B"/>
+                                 <TextBlock Text="{Binding Language.Resources[Reports]}" FontSize="12"/>
+                             </StackPanel>
+                         </Button>
+                         <Button Classes="action-btn" Command="{Binding GoToPOSCommand}">
+                             <StackPanel>
+                                 <TextBlock Text="🛒" FontSize="24" HorizontalAlignment="Center" Foreground="#607D8B"/>
+                                 <TextBlock Text="{Binding Language.Resources[POS]}" FontSize="12"/>
+                             </StackPanel>
+                         </Button>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Recent Activity Table -->
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Recent Stock Movements" FontSize="18" FontWeight="SemiBold" Foreground="#333"/>
+            <!-- Recent Activity Table -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="{Binding Language.Resources[RecentMovements]}" FontWeight="Bold" FontSize="18" Foreground="#333"/>
                     <Border Background="White" CornerRadius="8" BoxShadow="0 2 8 0 #08000000" ClipToBounds="True">
                         <StackPanel>
                             <Grid ColumnDefinitions="50,*,*,*,*,*" Background="#F5F5F5" Height="40">

@@ -11,6 +11,10 @@ public partial class MainViewModel : ViewModelBase
     private readonly LicenseService _licenseService;
     private readonly HardwareIdService _hardwareIdService;
     private readonly AnalyticsService _analyticsService;
+    private readonly ReceiptService _receiptService;
+    
+    // Public because View binds to it directly e.g. {Binding Language.Resources[Key]}
+    public LanguageService Language { get; } 
 
     [ObservableProperty]
     private ViewModelBase _currentPage = default!;
@@ -27,13 +31,15 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private Avalonia.Controls.GridLength _sidebarGridLength = new(0);
 
-    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService)
+    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
         _licenseService = licenseService;
         _hardwareIdService = hardwareIdService;
         _analyticsService = analyticsService;
+        _receiptService = receiptService;
+        Language = languageService;
 
         // 1. Strict License Check: Lock app if status is not Active/Valid
         var status = _licenseService.CurrentLicense.Status;
@@ -83,7 +89,18 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void GoToDashboard() => CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, GoToInventory, GoToReports, GoToPOS);
+    public void ChangeLanguage(string code)
+    {
+        Language.SetLanguage(code);
+    }
+    
+    [RelayCommand]
+    public void GoToDashboard()
+    {
+        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS);
+        _sidebarGridLength = new Avalonia.Controls.GridLength(250);
+        OnPropertyChanged(nameof(SidebarGridLength));
+    }
 
     [RelayCommand]
     public void GoToInventory() => CurrentPage = new InventoryViewModel(_inventoryService, _licenseService);
@@ -109,7 +126,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        CurrentPage = new POSViewModel(_inventoryService, _licenseService);
+        CurrentPage = new POSViewModel(_inventoryService, _licenseService, _receiptService);
     }
 
     [RelayCommand]

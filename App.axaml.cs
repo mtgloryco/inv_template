@@ -31,6 +31,8 @@ public partial class App : Application
             var cryptoService = new LicenseCryptoService();
             var licenseService = new LicenseService(dbService, hardwareService, cryptoService);
             var analyticsService = new AnalyticsService(dbService);
+            var receiptService = new ReceiptService();
+            var languageService = new LanguageService(); // NEW // NEW
 
             // Initialize services on a background thread to prevent UI thread deadlock
             Task.Run(async () =>
@@ -50,7 +52,7 @@ public partial class App : Application
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel(inventoryService, userService, licenseService, hardwareService, analyticsService),
+                DataContext = new MainViewModel(inventoryService, userService, licenseService, hardwareService, analyticsService, receiptService, languageService),
             };
         }
 

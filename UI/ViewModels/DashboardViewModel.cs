@@ -21,9 +21,9 @@ namespace InventoryManagementSystem.UI.ViewModels
     {
         private readonly InventoryService _inventoryService;
         private readonly LicenseService _licenseService;
-        private readonly Action _navigateToInventory;
-        private readonly Action _navigateToReports;
-        private readonly Action _navigateToPOS;
+        private readonly Action _goToInventory;
+        private readonly Action _goToReports;
+        private readonly Action _goToPOS;
 
         [ObservableProperty] private int _totalProducts;
         [ObservableProperty] private int _lowStockCount;
@@ -77,14 +77,18 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         public List<string> AdjTypes { get; } = new() { "IN", "OUT", "ADJUST" };
 
-        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, Action navigateToInventory, Action navigateToReports, Action navigateToPOS)
+        public LanguageService Language { get; }
+
+        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, Action goToInventory, Action goToReports, Action goToPOS)
         {
             _inventoryService = inventoryService;
-            _licenseService = licenseService;
-            _navigateToInventory = navigateToInventory;
-            _navigateToReports = navigateToReports;
-            _navigateToPOS = navigateToPOS;
-
+            _licenseService = licenseService; // Store for future checks
+            Language = languageService;
+            
+            _goToInventory = goToInventory;
+            _goToReports = goToReports;
+            _goToPOS = goToPOS;
+            
             InitializeState();
             LoadDashboardDataCommand.Execute(null);
         }
@@ -370,8 +374,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         [RelayCommand]
         public void CloseImportSummary() => ShowImportSummary = false;
 
-        [RelayCommand] public void GoToInventory() => _navigateToInventory?.Invoke();
-        [RelayCommand] public void GoToReports() => _navigateToReports?.Invoke();
-        [RelayCommand] public void GoToPOS() => _navigateToPOS?.Invoke();
+        [RelayCommand] public void GoToInventory() => _goToInventory?.Invoke();
+        [RelayCommand] public void GoToReports() => _goToReports?.Invoke();
+        [RelayCommand] public void GoToPOS() => _goToPOS?.Invoke();
     }
 }

@@ -50,6 +50,7 @@ namespace InventoryManagementSystem.UI.ViewModels
     {
         private readonly InventoryService _inventoryService;
         private readonly LicenseService _licenseService;
+        private readonly ReceiptService _receiptService;
 
         [ObservableProperty] private ObservableCollection<Product> _availableProducts = new();
         [ObservableProperty] private ObservableCollection<CartItem> _cartItems = new();
@@ -59,12 +60,14 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private decimal _changeDue;
         
         [ObservableProperty] private bool _isReceiptModalOpen;
-        [ObservableProperty] private string _lastReceiptText = string.Empty;
+        [ObservableProperty] private string _lastReceiptPath = string.Empty;
+        [ObservableProperty] private string _lastReceiptText = string.Empty; // Keep for fallback/display
 
-        public POSViewModel(InventoryService inventoryService, LicenseService licenseService)
+        public POSViewModel(InventoryService inventoryService, LicenseService licenseService, ReceiptService receiptService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService; // Future pro features
+            _receiptService = receiptService;
             LoadProductsCommand.Execute(null);
         }
 
@@ -146,6 +149,10 @@ namespace InventoryManagementSystem.UI.ViewModels
             {
                 var user = UserSession.CurrentUser?.Username ?? "Cashier";
 
+                // Generate Receipt PDF BEFORE clearing cart
+                LastReceiptPath = _receiptService.GenerateReceiptFromCart(user, CartItems, TotalAmount, AmountPaid, ChangeDue);
+                LastReceiptText = $"Receipt Generated Successfully!\nSaved to: {LastReceiptPath}";
+
                 // Process each item as a Stock OUT movement
                 foreach (var item in CartItems)
                 {
@@ -159,9 +166,6 @@ namespace InventoryManagementSystem.UI.ViewModels
                         unitPrice: item.UnitPrice // Capture the selling price at checkout
                     );
                 }
-
-                // Generate Receipt
-                GenerateReceipt(user);
                 
                 // Clear Cart
                 CartItems.Clear();
@@ -176,33 +180,9 @@ namespace InventoryManagementSystem.UI.ViewModels
             }
             catch (Exception ex)
             {
-                // Show error (for now, simply logging or maybe setting a property to show in UI)
-                // In a real MVP, we'd have an error toast.
                 LastReceiptText = $"Error during checkout: {ex.Message}";
                 IsReceiptModalOpen = true;
             }
-        }
-
-        private void GenerateReceipt(string cashier)
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("========== RECEIPT ==========");
-            sb.AppendLine($"Date: {DateTime.Now}");
-            sb.AppendLine($"Cashier: {cashier}");
-            sb.AppendLine("-----------------------------");
-            
-            foreach (var item in CartItems) // Capture currrent state before clearing
-            {
-                 sb.AppendLine($"{item.Product.Name}");
-                 sb.AppendLine($"  {item.Quantity} x {item.UnitPrice:C} = {item.Subtotal:C}");
-            }
-            
-            sb.AppendLine("-----------------------------");
-            sb.AppendLine($"TOTAL: {TotalAmount:C}");
-            sb.AppendLine("=============================");
-            sb.AppendLine("Thank you for your business!");
-            
-            LastReceiptText = sb.ToString();
         }
 
         [RelayCommand]
@@ -212,26 +192,25 @@ namespace InventoryManagementSystem.UI.ViewModels
         }
 
         [RelayCommand]
-        private async Task PrintReceipt()
+        private void PrintReceipt()
         {
-             // For MVP, "Print" is just "Save to File" or "Copy to Clipboard".
-             // We'll reuse the logic from ReportsViewModel if possible, or just plain text save.
-             
-             if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+             // Open the generated PDF
+             if (!string.IsNullOrEmpty(LastReceiptPath) && System.IO.File.Exists(LastReceiptPath))
              {
-                var storageProvider = desktop.MainWindow.StorageProvider;
-                var file = await storageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-                {
-                    Title = "Save Receipt",
-                    DefaultExtension = ".txt",
-                    SuggestedFileName = $"Receipt_{DateTime.Now:yyyyMMdd_HHmmss}",
-                    FileTypeChoices = new[] { new Avalonia.Platform.Storage.FilePickerFileType("Text Files") { Patterns = new[] { "*.txt" } } }
-                });
-
-                if (file != null)
-                {
-                    await System.IO.File.WriteAllTextAsync(file.Path.LocalPath, LastReceiptText);
-                }
+                 try
+                 {
+                     new System.Diagnostics.Process
+                     {
+                         StartInfo = new System.Diagnostics.ProcessStartInfo(LastReceiptPath)
+                         {
+                             UseShellExecute = true
+                         }
+                     }.Start();
+                 }
+                 catch (Exception ex)
+                 {
+                     LastReceiptText += $"\nCould not open PDF automatically: {ex.Message}";
+                 }
              }
         }
     }

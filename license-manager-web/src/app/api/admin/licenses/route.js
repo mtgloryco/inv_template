@@ -19,8 +19,6 @@ export async function GET(request) {
         .aggregate([
             {
                 $addFields: {
-                    // Convert string userId to ObjectId if it's a valid hex string
-                    // This handles the type mismatch between license.userId (string) and user._id (ObjectId)
                     user_oid: { $toObjectId: '$userId' }
                 }
             },

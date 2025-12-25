@@ -10,16 +10,16 @@
     <SplitView IsPaneOpen="{Binding IsPaneOpen}"
                DisplayMode="Overlay"
                OpenPaneLength="350"
-               PaneBackground="#2D2D30">
+               PaneBackground="White">
         <SplitView.Pane>
             <Border Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="{Binding PaneTitle}" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="{Binding PaneTitle}" FontSize="20" FontWeight="Bold" Foreground="#333"/>
                     
                     <TextBox Watermark="Username" Text="{Binding Username}"/>
                     <TextBox Watermark="Password" Text="{Binding Password}" PasswordChar="*"/>
                     
-                    <TextBlock Text="Role" Foreground="#CCC" FontSize="12"/>
+                    <TextBlock Text="Role" Foreground="#666" FontSize="12"/>
                     <ComboBox ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" HorizontalAlignment="Stretch"/>
                     
                     <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap"/>
@@ -33,10 +33,10 @@
         </SplitView.Pane>
         
         <SplitView.Content>
-            <Grid RowDefinitions="Auto, *">
+            <Grid RowDefinitions="Auto, *" Margin="30">
                  <!-- Header -->
-                <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,10">
-                    <TextBlock Text="User Management" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,25">
+                    <TextBlock Text="User Management" FontSize="28" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Content="+ New User" Command="{Binding OpenAddUserPaneCommand}" Background="#2E7D32" Foreground="White"/>
                 </Grid>
 
@@ -44,7 +44,7 @@
                           AutoGenerateColumns="False" 
                           IsReadOnly="True" 
                           GridLinesVisibility="All"
-                          BorderThickness="1" BorderBrush="#333" Background="#1E1E1E">
+                          BorderThickness="1" BorderBrush="#EEE" Background="White">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
                         <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="*"/>
