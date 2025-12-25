@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
+             x:Class="InventoryManagementSystem.UI.Views.AnalyticsView"
+             x:DataType="vm:AnalyticsViewModel">
+
+    <Grid RowDefinitions="Auto, *" Margin="20">
+        <!-- Header -->
+        <Grid RowDefinitions="Auto, Auto" Grid.Row="0" Margin="0,0,0,20">
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Business Insights" FontSize="28" FontWeight="SemiBold" Foreground="#111827"/>
+                <TextBlock Text="Actionable Recommendations for your inventory" FontSize="16" Foreground="#6B7280" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="15" Margin="0,20,0,0">
+                <StackPanel>
+                    <TextBlock Text="From" FontSize="12" Foreground="#888"/>
+                    <DatePicker SelectedDate="{Binding StartDate}"/>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="To" FontSize="12" Foreground="#888"/>
+                    <DatePicker SelectedDate="{Binding EndDate}"/>
+                </StackPanel>
+                <Button Content="Update Analysis" Command="{Binding LoadDataCommand}" VerticalAlignment="Bottom" Background="#007ACC" Foreground="White" FontWeight="Bold"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Loading State -->
+        <StackPanel Grid.Row="1" IsVisible="{Binding IsLoading}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="Analyzing Data..." FontSize="18" Foreground="#6B7280"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*" IsVisible="{Binding !IsLoading}">
+            
+            <!-- 1. Reorder Recommendations -->
+            <Border Grid.Column="0" Background="White" CornerRadius="12" Margin="0,0,10,0" BoxShadow="0 4 6 0 #10000000">
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Background="#FEE2E2" CornerRadius="12 12 0 0" Padding="15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚠️" FontSize="20"/>
+                            <TextBlock Text="Items to Buy (Low Stock)" FontSize="16" FontWeight="Bold" Foreground="#B91C1C" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer Grid.Row="1" Padding="10">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding ReorderList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="10">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="{Binding Product.Name}" FontWeight="SemiBold" FontSize="15" Foreground="#1F2937"/>
+                                                <TextBlock Text="{Binding Reason}" FontSize="13" Foreground="#DC2626"/>
+                                                <TextBlock Text="{Binding Action}" FontSize="12" Foreground="#4B5563" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Inventory levels are healthy. No items need reordering." 
+                                       IsVisible="{Binding !ReorderList.Count}" 
+                                       Foreground="#10B981" Margin="10,20" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- 2. Dead Stock -->
+            <Border Grid.Column="1" Background="White" CornerRadius="12" Margin="0,0,10,0" BoxShadow="0 4 6 0 #10000000">
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Background="#FEF3C7" CornerRadius="12 12 0 0" Padding="15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="🐢" FontSize="20"/>
+                            <TextBlock Text="Slow Moving (Dead Stock)" FontSize="16" FontWeight="Bold" Foreground="#D97706" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer Grid.Row="1" Padding="10">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding DeadStockList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="10">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="{Binding Product.Name}" FontWeight="SemiBold" FontSize="15" Foreground="#1F2937"/>
+                                                <TextBlock Text="{Binding Reason}" FontSize="13" Foreground="#D97706"/>
+                                                <TextBlock Text="{Binding Action}" FontSize="12" Foreground="#4B5563" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="No dead stock found. Active items are selling or are too new to evaluate." 
+                                       IsVisible="{Binding !DeadStockList.Count}" 
+                                       Foreground="#10B981" Margin="10,20" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- 3. Profitability -->
+            <Border Grid.Column="2" Background="White" CornerRadius="12" BoxShadow="0 4 6 0 #10000000">
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Background="#DBEAFE" CornerRadius="12 12 0 0" Padding="15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                             <TextBlock Text="📉" FontSize="20"/>
+                            <TextBlock Text="Low Profit Margins" FontSize="16" FontWeight="Bold" Foreground="#2563EB" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer Grid.Row="1" Padding="10">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding LowMarginList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="10">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="{Binding Product.Name}" FontWeight="SemiBold" FontSize="15" Foreground="#1F2937"/>
+                                                <TextBlock Text="{Binding Reason}" FontSize="13" Foreground="#2563EB"/>
+                                                <TextBlock Text="{Binding Action}" FontSize="12" Foreground="#4B5563" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="All sales in this period met the 20% profit target. Great job!" 
+                                       IsVisible="{Binding !LowMarginList.Count}" 
+                                       Foreground="#10B981" Margin="10,20" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</UserControl>

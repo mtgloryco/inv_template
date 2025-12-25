@@ -13,7 +13,10 @@
                 <!-- Header -->
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="{Binding WelcomeMessage}" FontSize="28" FontWeight="SemiBold" Foreground="#333"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="{Binding WelcomeMessage}" FontSize="28" FontWeight="SemiBold" Foreground="#333"/>
+                            <TextBlock Text="v1.1 (Patched)" FontSize="12" Foreground="#EF4444" VerticalAlignment="Center"/>
+                        </StackPanel>
                         <TextBlock Text="Here's what's happening in your inventory today." Foreground="#666" Margin="0,5,0,0"/>
                     </StackPanel>
                     
@@ -202,6 +205,22 @@
                             <TextBlock Text="Quantity" FontSize="12" Foreground="#888"/>
                             <TextBox Text="{Binding AdjQuantity}" Watermark="Enter quantity"/>
                         </StackPanel>
+                         <StackPanel Spacing="5" IsVisible="{Binding IsStockIn}">
+                            <!-- Show Cost Price only for STOCK IN to update master cost -->
+                             <TextBlock Text="Buying Price (Unit Cost)" FontSize="12" Foreground="#888"/>
+                             <TextBox Text="{Binding AdjCostPrice}" Watermark="Unit Cost Update..."/> 
+                             
+                             <!-- Allow updating Selling Price too -->
+                             <TextBlock Text="Selling Price (Update Master)" FontSize="12" Foreground="#888"/>
+                             <TextBox Text="{Binding AdjSellingPrice}" Watermark="New Selling Price..."/>
+                        </StackPanel>
+
+                         <StackPanel Spacing="5" IsVisible="{Binding IsStockOut}">
+                            <!-- Show Selling Price only for STOCK OUT to verify revenue -->
+                            <TextBlock Text="Selling Price (Per Unit)" FontSize="12" Foreground="#888"/>
+                             <TextBox Text="{Binding AdjSellingPrice}" Watermark="Price per unit"/>
+                        </StackPanel>
+
                         <StackPanel Spacing="5">
                             <TextBlock Text="Reason" FontSize="12" Foreground="#888"/>
                             <TextBox Text="{Binding AdjReason}" Watermark="Optional reason..."/>

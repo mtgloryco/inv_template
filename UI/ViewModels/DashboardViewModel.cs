@@ -58,6 +58,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private string _modalTitle = string.Empty;
         [ObservableProperty] private Product _formProduct = new();
         [ObservableProperty] private int _adjQuantity;
+        [ObservableProperty] private decimal _adjSellingPrice; // Custom Selling Price (Stock OUT)
+        [ObservableProperty] private decimal _adjCostPrice;    // Custom Cost Price (Stock IN)
         [ObservableProperty] private string _adjReason = string.Empty;
         [ObservableProperty] private string _adjType = "IN";
         [ObservableProperty] private bool _showStockForm;
@@ -120,6 +122,9 @@ namespace InventoryManagementSystem.UI.ViewModels
         }
 
         [ObservableProperty] private bool _hasMovements;
+        
+        public bool IsStockOut => AdjType == "OUT";
+        public bool IsStockIn => AdjType == "IN";
 
         [RelayCommand]
         private async Task LoadDashboardData()
@@ -172,12 +177,26 @@ namespace InventoryManagementSystem.UI.ViewModels
         {
             ModalTitle = type == "IN" ? "Stock IN" : "Stock OUT";
             AdjType = type;
+            OnPropertyChanged(nameof(IsStockOut)); // Notify UI
+            OnPropertyChanged(nameof(IsStockIn)); // Notify UI
             AdjQuantity = 0;
+            AdjSellingPrice = 0; // Reset
+            AdjCostPrice = 0;    // Reset
             AdjReason = string.Empty;
             ModalError = string.Empty;
             ShowProductForm = false;
             ShowStockForm = true;
             IsModalOpen = true;
+        }
+        
+        // Helper to update default price when product is selected
+        partial void OnSelectedTargetProductChanged(Product? value)
+        {
+            if (value != null)
+            {
+                if (AdjType == "OUT") AdjSellingPrice = value.Price;
+                if (AdjType == "IN") AdjCostPrice = value.Cost; // Pre-fill with known cost
+            }
         }
 
         [RelayCommand]
@@ -215,7 +234,14 @@ namespace InventoryManagementSystem.UI.ViewModels
                     }
 
                     var user = UserSession.CurrentUser?.Username ?? "Unknown";
-                    await _inventoryService.AddStockMovementAsync(SelectedTargetProduct.Id, AdjQuantity, AdjType, AdjReason, user);
+                    
+                    // Pass params based on type
+                    // For IN: unitPrice is used to update the Master Price
+                    // For OUT: unitPrice is the actual transaction price
+                    decimal? unitPrice = AdjSellingPrice > 0 ? AdjSellingPrice : null;
+                    decimal? customCost = (AdjType == "IN") ? AdjCostPrice : null;
+                    
+                    await _inventoryService.AddStockMovementAsync(SelectedTargetProduct.Id, AdjQuantity, AdjType, AdjReason, user, customCost: customCost, unitPrice: unitPrice);
                 }
 
                 IsModalOpen = false;

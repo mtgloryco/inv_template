@@ -41,10 +41,11 @@ namespace InventoryManagementSystem.Services
         }
 
         // 2. DEAD STOCK ALERTS
-        // Logic: Items with Stock > 0 but NO sales in last 90 days
-        public async Task<List<ProductRecommendation>> GetDeadStockAsync()
+        // Logic: Items with Stock > 0 but NO sales in the specified range (Default: last 90 days)
+        public async Task<List<ProductRecommendation>> GetDeadStockAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-            var cutoffDate = DateTime.Now.AddDays(-90);
+            var end = endDate ?? DateTime.Now;
+            var start = startDate ?? end.AddDays(-90); // Default lookback 90 days
             
             // Get all products with stock
             var productsWithStock = await _databaseService.Connection.Table<Product>()
@@ -55,23 +56,22 @@ namespace InventoryManagementSystem.Services
 
             foreach (var p in productsWithStock)
             {
-                // Check last "OUT" movement
-                var lastSale = await _databaseService.Connection.Table<StockMovement>()
-                                    .Where(m => m.ProductId == p.Id && m.MovementType == "OUT")
-                                    .OrderByDescending(m => m.Date)
-                                    .FirstOrDefaultAsync();
+                // Check if there were ANY sales in the window
+                var saleInWindow = await _databaseService.Connection.Table<StockMovement>()
+                                    .Where(m => m.ProductId == p.Id && m.MovementType == "OUT" && m.Date >= start && m.Date <= end)
+                                    .CountAsync();
 
-                // If never sold, or last sold > 90 days ago
-                if (lastSale == null || lastSale.Date < cutoffDate)
+                if (saleInWindow == 0)
                 {
-                    // Logic: If added recently (e.g., last week), it's not dead stock yet.
+                    // Logic: If added AFTER the start date, it's not "dead" yet, it's just new.
+                    // We only flag items that existed BEFORE the window but had 0 sales WITHIN the window.
                     var creationDate = await GetProductCreationDate(p.Id);
-                    if (creationDate < cutoffDate)
+                    if (creationDate < start)
                     {
                         deadStock.Add(new ProductRecommendation
                         {
                             Product = p,
-                            Reason = "No sales in 90+ days",
+                            Reason = $"No sales between {start:MM/dd} and {end:MM/dd}",
                             Action = "Discount this item to free up cash."
                         });
                     }
@@ -82,23 +82,51 @@ namespace InventoryManagementSystem.Services
         }
 
         // 3. LOW MARGIN ALERTS
-        // Logic: Margin < 20%
-        public async Task<List<ProductRecommendation>> GetLowMarginProductsAsync()
+        // Logic: Calculate Realized Margin from actual sales in the period
+        public async Task<List<ProductRecommendation>> GetLowMarginProductsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
+            var end = endDate ?? DateTime.Now;
+            var start = startDate ?? end.AddDays(-30);
+
             var products = await _databaseService.Connection.Table<Product>().ToListAsync();
             var lowMarginItems = new List<ProductRecommendation>();
 
             foreach (var p in products)
             {
-                if (p.Price <= 0) continue; // Avoid division by zero
+                // 1. Analyze Actual Sales in Period
+                var sales = await _databaseService.Connection.Table<StockMovement>()
+                                .Where(m => m.ProductId == p.Id && m.MovementType == "OUT" && m.Date >= start && m.Date <= end)
+                                .ToListAsync();
 
-                var margin = (p.Price - p.Cost) / p.Price;
-                if (margin < 0.20m) // 20% threshold
+                decimal avgMargin = 0;
+
+                if (sales.Any())
+                {
+                    // Calculate weighted average realized margin
+                    decimal totalRevenue = sales.Sum(s => s.QuantityChanged * s.UnitPrice);
+                    
+                    // COGS Approximation (since we don't have easy batch linking here without complex query, use current Cost or batch trace if available)
+                    // For speed in this loop, we'll use the Product.Cost (Current Replacement Cost) as the baseline for "Strategy"
+                    // Or ideally, we look at BatchUsage. Let's stick to Product.Cost for the Recommendation engine to keep it fast.
+                    decimal totalEstCost = sales.Sum(s => s.QuantityChanged) * p.Cost;
+
+                    if (totalRevenue > 0)
+                    {
+                        avgMargin = (totalRevenue - totalEstCost) / totalRevenue;
+                    }
+                }
+                else
+                {
+                     // Fallback to theoretical margin
+                     if (p.Price > 0) avgMargin = (p.Price - p.Cost) / p.Price;
+                }
+
+                if (avgMargin < 0.20m) // 20% threshold
                 {
                     lowMarginItems.Add(new ProductRecommendation
                     {
                         Product = p,
-                        Reason = $"Low Margin ({(margin * 100):N1}%)",
+                        Reason = $"Low Margin ({(avgMargin * 100):N1}%) in selected period",
                         Action = "Consider raising price or negotiating cost."
                     });
                 }

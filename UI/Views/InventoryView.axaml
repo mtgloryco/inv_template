@@ -94,7 +94,7 @@
                         <DataGridTextColumn Header="Stock" Binding="{Binding StockQuantity}" Width="80"/>
                         <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="60"/>
                         <!-- Price is roughly displayed here, but actual sale price is set per transaction -->
-                        <DataGridTextColumn Header="Est. Price" Binding="{Binding Price, StringFormat={}{0:C}}" Width="80"/>
+                        <DataGridTextColumn Header="Selling Price" Binding="{Binding Price, StringFormat={}{0:C}}" Width="100"/>
                         
                         <DataGridTemplateColumn Header="Actions" Width="190">
                             <DataGridTemplateColumn.CellTemplate>

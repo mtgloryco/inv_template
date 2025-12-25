@@ -10,6 +10,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly UserService _userService;
     private readonly LicenseService _licenseService;
     private readonly HardwareIdService _hardwareIdService;
+    private readonly AnalyticsService _analyticsService;
 
     [ObservableProperty]
     private ViewModelBase _currentPage = default!;
@@ -26,12 +27,13 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private Avalonia.Controls.GridLength _sidebarGridLength = new(0);
 
-    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService)
+    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
         _licenseService = licenseService;
         _hardwareIdService = hardwareIdService;
+        _analyticsService = analyticsService;
 
         // 1. Strict License Check: Lock app if status is not Active/Valid
         var status = _licenseService.CurrentLicense.Status;
@@ -108,6 +110,18 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
         CurrentPage = new POSViewModel(_inventoryService, _licenseService);
+    }
+
+    [RelayCommand]
+    public void GoToAnalytics()
+    {
+         if (!_licenseService.IsPremiumActive())
+        {
+             // Analytics is a premium feature
+            GoToLicense();
+            return;
+        }
+        CurrentPage = new AnalyticsViewModel(_analyticsService);
     }
 
     [RelayCommand]

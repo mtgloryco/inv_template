@@ -126,6 +126,28 @@ namespace InventoryManagementSystem.Services
                 {
                     newStock += quantity;
 
+                    // UPDATE MASTER COST if a new cost is provided
+                    // This ensures future profitability calculations use the latest replacement cost
+                    if (customCost.HasValue && customCost.Value > 0)
+                    {
+                        product.Cost = customCost.Value;
+                    }
+
+                    // UPDATE MASTER PRICE if provided
+                    if (unitPrice.HasValue && unitPrice.Value > 0)
+                    {
+                        product.Price = unitPrice.Value;
+                    }
+                    // FALLBACK: If Price is still 0, but we have a Cost, set Price = Cost
+                    // This prevents items from appearing as $0.00 in POS if the user forgot to set a Selling Price
+                    else if (product.Price == 0 && customCost.HasValue && customCost.Value > 0)
+                    {
+                        product.Price = customCost.Value;
+                    }
+                    
+                    // We must update the product record now to save the Cost/Price changes
+                    conn.Update(product);
+
                     var batch = new PurchaseBatch
                     {
                         ProductId = productId,

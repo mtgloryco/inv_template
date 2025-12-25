@@ -137,22 +137,45 @@ namespace InventoryManagementSystem.Services
 
         private string GetMachineIdentifier()
         {
+            // LINUX: /etc/machine-id is the standard unique ID generated at install time.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 try { return File.ReadAllText("/etc/machine-id").Trim(); }
                 catch { try { return File.ReadAllText("/var/lib/dbus/machine-id").Trim(); } catch { } }
             }
-            return Environment.MachineName;
+            
+            // WINDOWS: Use Win32_ComputerSystemProduct UUID (BIOS UUID)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                try
+                {
+                    using (var searcher = new System.Management.ManagementObjectSearcher("SELECT UUID FROM Win32_ComputerSystemProduct"))
+                    {
+                        foreach (System.Management.ManagementObject product in searcher.Get())
+                        {
+                            var uuid = product["UUID"]?.ToString()?.Trim();
+                            if (!string.IsNullOrEmpty(uuid)) return uuid;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            return Environment.MachineName; // Fallback (least stable, changes with hostname)
         }
 
         private string GetFirstMacAddress()
         {
             try
             {
+                // STABILITY FIX: Do NOT check for OperationalStatus.Up. 
+                // We want the hardware address of the built-in card, even if offline.
+                // We order by Id to try and get the same interface every time.
                 return NetworkInterface.GetAllNetworkInterfaces()
-                    .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    .Where(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet || nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
+                    .OrderBy(nic => nic.Id) // Order by ID to ensure consistency
                     .Select(nic => nic.GetPhysicalAddress().ToString())
-                    .FirstOrDefault() ?? "000000000000";
+                    .FirstOrDefault(mac => !string.IsNullOrEmpty(mac) && mac.Length > 0) ?? "000000000000";
             }
             catch { return "000000000000"; }
         }

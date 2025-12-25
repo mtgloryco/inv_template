@@ -29,6 +29,7 @@
                 <Button Content="POS / Cashier" Command="{Binding GoToPOSCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="Inventory" Command="{Binding GoToInventoryCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="Reports" Command="{Binding GoToReportsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Insights" Command="{Binding GoToAnalyticsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="Users" Command="{Binding GoToUsersCommand}" IsVisible="{Binding IsAdmin}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="License" Command="{Binding GoToLicenseCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 
