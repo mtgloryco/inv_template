@@ -68,16 +68,24 @@ namespace InventoryManagementSystem.Services
                 var diskPath = "/dev/disk/by-id";
                 if (Directory.Exists(diskPath))
                 {
-                    var disks = Directory.GetFiles(diskPath);
-                    var firstDisk = disks.FirstOrDefault(d => !d.Contains("-part"));
-                    if (firstDisk != null) return Path.GetFileName(firstDisk);
+                    // FIX: Sort to ensure deterministic selection
+                    var disks = Directory.GetFiles(diskPath)
+                        .Where(d => !d.Contains("-part"))
+                        .OrderBy(d => d) 
+                        .ToList();
+
+                    // Prefer real hardware drives over virtual/usb if possible (optional heuristic)
+                    var bestDisk = disks.FirstOrDefault(d => d.Contains("nvme") || d.Contains("ata") || d.Contains("scsi")) 
+                                   ?? disks.FirstOrDefault();
+                                   
+                    if (bestDisk != null) return Path.GetFileName(bestDisk);
                 }
 
                 // Fallback to reading from /sys/block/
                 var sysBlock = "/sys/block";
                 if (Directory.Exists(sysBlock))
                 {
-                    var devices = Directory.GetDirectories(sysBlock);
+                    var devices = Directory.GetDirectories(sysBlock).OrderBy(d => d).ToList();
                     foreach (var dev in devices)
                     {
                         var serialPath = Path.Combine(dev, "device/serial");
@@ -168,14 +176,24 @@ namespace InventoryManagementSystem.Services
         {
             try
             {
-                // STABILITY FIX: Do NOT check for OperationalStatus.Up. 
-                // We want the hardware address of the built-in card, even if offline.
-                // We order by Id to try and get the same interface every time.
-                return NetworkInterface.GetAllNetworkInterfaces()
+                // STABILITY FIX: 
+                // 1. Filter only Ethernet/WiFi
+                // 2. Sort by Name (e.g. eth0, wlan0) instead of ID, as ID can change if drivers reload.
+                // 3. Prefer Ethernet over WiFi (Ethernet is less likely to be a USB dongle).
+                
+                var nics = NetworkInterface.GetAllNetworkInterfaces()
                     .Where(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet || nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
-                    .OrderBy(nic => nic.Id) // Order by ID to ensure consistency
-                    .Select(nic => nic.GetPhysicalAddress().ToString())
-                    .FirstOrDefault(mac => !string.IsNullOrEmpty(mac) && mac.Length > 0) ?? "000000000000";
+                    .OrderByDescending(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet) // Ethernet first
+                    .ThenBy(nic => nic.Name) // Then alphabetically by name
+                    .ToList();
+
+                foreach (var nic in nics)
+                {
+                    var addr = nic.GetPhysicalAddress().ToString();
+                    if (!string.IsNullOrEmpty(addr) && addr.Length > 0) return addr;
+                }
+                
+                return "000000000000";
             }
             catch { return "000000000000"; }
         }
