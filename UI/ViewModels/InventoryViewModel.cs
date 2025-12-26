@@ -15,7 +15,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly InventoryService _inventoryService;
         private readonly LicenseService _licenseService;
 
-        public bool CanBulkImport => _licenseService.IsFeatureAllowed("BulkImport");
+        public bool CanBulkImport => _licenseService.CanAccessBulkImport();
         public string BulkImportTooltip => CanBulkImport ? "Import products from CSV" : "Import is a Premium Feature";
 
         [ObservableProperty]

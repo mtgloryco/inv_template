@@ -230,7 +230,7 @@ namespace InventoryManagementSystem.Services
             return IsPro || IsEnterprise;
         }
 
-        public bool CanBulkImport()
+        public bool CanAccessBulkImport()
         {
             // Enterprise only (or Pro if generous) - limiting to Enterprise for now based on request
             return IsEnterprise;

@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InventoryManagementSystem.Services;
+using System.Threading.Tasks;
+using System;
 
 namespace InventoryManagementSystem.UI.ViewModels;
 
@@ -12,8 +14,14 @@ public partial class MainViewModel : ViewModelBase
     private readonly HardwareIdService _hardwareIdService;
     private readonly AnalyticsService _analyticsService;
     private readonly ReceiptService _receiptService;
+    private readonly UpdateService _updateService;
+
+    // Navigation Stack
+    private readonly System.Collections.Generic.Stack<ViewModelBase> _navigationStack = new();
+
+    [ObservableProperty]
+    private bool _canGoBack;
     
-    // Public because View binds to it directly e.g. {Binding Language.Resources[Key]}
     public LanguageService Language { get; } 
 
     [ObservableProperty]
@@ -31,7 +39,21 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private Avalonia.Controls.GridLength _sidebarGridLength = new(0);
 
-    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService)
+    // Update Properties
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private string _updateStatusText = "Check Updates"; // Button Label
+
+
+    [ObservableProperty]
+    private string _updateVersion = "";
+
+    [ObservableProperty]
+    private string _releaseNotesUrl = "";
+
+    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService, UpdateService updateService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -40,6 +62,10 @@ public partial class MainViewModel : ViewModelBase
         _analyticsService = analyticsService;
         _receiptService = receiptService;
         Language = languageService;
+        _updateService = updateService;
+
+        // Check for updates on startup (fire and forget, silent)
+        _ = CheckForUpdatesInternal(false);
 
         // 1. Strict License Check: Lock app if status is not Active/Valid
         var status = _licenseService.CurrentLicense.Status;
@@ -75,12 +101,51 @@ public partial class MainViewModel : ViewModelBase
         SidebarGridLength = new Avalonia.Controls.GridLength(250);
         CurrentUserName = UserSession.CurrentUser?.Username ?? "Unknown";
         IsAdmin = UserSession.IsAdmin;
-        GoToDashboard();
+        
+        // Start fresh on Dashboard, clearing any login/license history
+        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS);
+        _navigationStack.Clear();
+        CanGoBack = false;
+        OnPropertyChanged(nameof(SidebarGridLength));
+    }
+
+    [RelayCommand]
+    public void GoBack()
+    {
+        if (_navigationStack.Count > 0)
+        {
+            var previousPage = _navigationStack.Pop();
+            CurrentPage = previousPage; // Directly set backing field to avoid pushing to stack again
+            // OnPropertyChanged(nameof(CurrentPage)); // Not needed if setting property
+
+            
+            // Update UI
+            if (previousPage is DashboardViewModel)
+            {
+               SidebarGridLength = new Avalonia.Controls.GridLength(250);
+            }
+            // Add other checks if needed for sidebar visibility, though mostly Dashboard controls it
+             
+            CanGoBack = _navigationStack.Count > 0;
+        }
+    }
+
+    private void NavigateTo(ViewModelBase newPage)
+    {
+        if (CurrentPage != null)
+        {
+            _navigationStack.Push(CurrentPage);
+        }
+        CurrentPage = newPage;
+        CanGoBack = _navigationStack.Count > 0;
     }
 
     [RelayCommand]
     public void Logout()
     {
+        _navigationStack.Clear(); // Clear history on logout
+        CanGoBack = false;
+
         // "Exit" Application
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -97,13 +162,14 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToDashboard()
     {
-        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS);
-        _sidebarGridLength = new Avalonia.Controls.GridLength(250);
-        OnPropertyChanged(nameof(SidebarGridLength));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS));
+        SidebarGridLength = new Avalonia.Controls.GridLength(250);
+
     }
 
     [RelayCommand]
-    public void GoToInventory() => CurrentPage = new InventoryViewModel(_inventoryService, _licenseService);
+    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService));
 
     [RelayCommand]
     public void GoToReports()
@@ -114,7 +180,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense(); 
             return;
         }
-        CurrentPage = new ReportsViewModel(_inventoryService, _licenseService);
+        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService));
     }
 
     [RelayCommand]
@@ -126,7 +192,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        CurrentPage = new POSViewModel(_inventoryService, _licenseService, _receiptService);
+        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService));
     }
 
     [RelayCommand]
@@ -138,7 +204,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        CurrentPage = new AnalyticsViewModel(_analyticsService);
+        NavigateTo(new AnalyticsViewModel(_analyticsService));
     }
 
     [RelayCommand]
@@ -146,7 +212,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (IsAdmin)
         {
-            CurrentPage = new UsersViewModel(_userService);
+            NavigateTo(new UsersViewModel(_userService));
         }
     }
 
@@ -162,5 +228,68 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void GoToLicense() => CurrentPage = new LicenseViewModel(_licenseService, _hardwareIdService, OnActivationSuccess);
+    public void GoToLicense() => NavigateTo(new LicenseViewModel(_licenseService, _hardwareIdService, OnActivationSuccess));
+
+    [RelayCommand]
+    public Task CheckForUpdates() => CheckForUpdatesInternal(true);
+
+    private async Task CheckForUpdatesInternal(bool userInitiated)
+    {
+        if (UpdateStatusText == "Checking...") return; // Prevent spam
+
+        if (userInitiated) UpdateStatusText = "Checking...";
+        
+        var result = await _updateService.CheckForUpdatesAsync();
+        
+        if (result.Success && result.Version != null)
+        {
+            UpdateVersion = result.Version;
+            ReleaseNotesUrl = result.ReleaseNotesUrl ?? "";
+            IsUpdateAvailable = true;
+            UpdateStatusText = "Update Found!";
+        }
+        else
+        {
+            IsUpdateAvailable = false;
+            if (userInitiated)
+            {
+                if (result.IsDevMode)
+                {
+                     UpdateStatusText = "Dev Mode (Skipped)";
+                }
+                else
+                {
+                    UpdateStatusText = "Up to Date";
+                }
+                
+                // Reset text after 3 seconds
+                await Task.Delay(3000);
+                UpdateStatusText = "Check Updates";
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void OpenReleaseNotes()
+    {
+        if (!string.IsNullOrEmpty(ReleaseNotesUrl))
+        {
+            try
+            {
+               // Cross-platform open url
+               System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+               {
+                   FileName = ReleaseNotesUrl,
+                   UseShellExecute = true
+               });
+            }
+            catch { /* handle error */ }
+        }
+    }
+
+    [RelayCommand]
+    public async Task InstallUpdate()
+    {
+        await _updateService.DownloadAndRestartAsync();
+    }
 }

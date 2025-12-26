@@ -32,6 +32,7 @@
                 <Button Content="{Binding Language.Resources[Insights]}" Command="{Binding GoToAnalyticsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Users]}" Command="{Binding GoToUsersCommand}" IsVisible="{Binding IsAdmin}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[License]}" Command="{Binding GoToLicenseCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="{Binding UpdateStatusText}" Command="{Binding CheckForUpdatesCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 
                 <StackPanel VerticalAlignment="Bottom" Margin="0,40,0,0" Spacing="10">
                     <TextBlock Text="Language / Ururimi" FontSize="10" Foreground="Gray"/>
@@ -48,7 +49,21 @@
 
         <!-- Main Content (Spans entire window if not logged in) -->
         <Border Grid.Column="1">
-            <ContentControl Content="{Binding CurrentPage}" Margin="20"/>
+            <Grid RowDefinitions="Auto,*">
+                 <Button Grid.Row="0" Content="← Go Back" Command="{Binding GoBackCommand}" IsVisible="{Binding CanGoBack}" 
+                         Margin="20,10,0,0" Background="Transparent" Foreground="Gray" HorizontalAlignment="Left" Cursor="Hand"/>
+
+                 <!-- Update Notification Banner -->
+                 <Border Grid.Row="0" Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="1" CornerRadius="4" Padding="10" Margin="20,5,20,5" IsVisible="{Binding IsUpdateAvailable}" HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <StackPanel Orientation="Horizontal" Spacing="15">
+                        <TextBlock Text="{Binding UpdateVersion, StringFormat='New Version Available: {0}'}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#0D47A1"/>
+                        <Button Content="View Changes" Command="{Binding OpenReleaseNotesCommand}" Background="Transparent" Foreground="#1976D2" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="Install &amp; Restart" Command="{Binding InstallUpdateCommand}" Background="#1976D2" Foreground="White" CornerRadius="4"/>
+                    </StackPanel>
+                 </Border>
+
+                <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="20"/>
+            </Grid>
         </Border>
     </Grid>
 

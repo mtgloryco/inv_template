@@ -123,7 +123,7 @@ namespace InventoryManagementSystem.UI.ViewModels
             CanStockMove = IsLicenseValid;
             
             // New Tier Gating Logic
-            CanBulkImport = _licenseService.CanBulkImport();
+            CanBulkImport = _licenseService.CanAccessBulkImport();
             CanViewReports = _licenseService.CanAccessAdvancedReports();
             
             // Note: POS button is typically gated in the UI by binding to CanAccessPOS or checking it here

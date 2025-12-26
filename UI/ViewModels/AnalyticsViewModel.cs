@@ -27,11 +27,11 @@ public partial class AnalyticsViewModel : ViewModelBase
     public AnalyticsViewModel(AnalyticsService analyticsService)
     {
         _analyticsService = analyticsService;
-        LoadDataCommand();
+        _ = LoadData();
     }
 
     [RelayCommand]
-    public async void LoadDataCommand()
+    public async Task LoadData()
     {
         IsLoading = true;
         ReorderList.Clear();
