@@ -63,11 +63,18 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private string _lastReceiptPath = string.Empty;
         [ObservableProperty] private string _lastReceiptText = string.Empty; // Keep for fallback/display
 
-        public POSViewModel(InventoryService inventoryService, LicenseService licenseService, ReceiptService receiptService)
+        public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
+        public LanguageService Language { get; }
+
+        private readonly SettingsService _settingsService;
+
+        public POSViewModel(InventoryService inventoryService, LicenseService licenseService, ReceiptService receiptService, SettingsService settingsService, LanguageService languageService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService; // Future pro features
             _receiptService = receiptService;
+            _settingsService = settingsService;
+            Language = languageService;
             LoadProductsCommand.Execute(null);
         }
 

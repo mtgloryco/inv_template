@@ -20,7 +20,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
-        <Border Grid.Column="0" Background="#F5F5F5" Padding="20" IsVisible="{Binding IsLoggedIn}">
+        <Border Grid.Column="0" Background="{DynamicResource PageBackgroundColor}" Padding="20" IsVisible="{Binding IsLoggedIn}">
             <StackPanel Spacing="15">
                 <TextBlock Text="IMS" FontWeight="Bold" FontSize="24" Margin="0,30,0,20"/>
                 <TextBlock Text="{Binding CurrentUserName}" FontWeight="SemiBold" Margin="0,0,0,20"/>
@@ -32,9 +32,12 @@
                 <Button Content="{Binding Language.Resources[Insights]}" Command="{Binding GoToAnalyticsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Users]}" Command="{Binding GoToUsersCommand}" IsVisible="{Binding IsAdmin}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[License]}" Command="{Binding GoToLicenseCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Settings" Command="{Binding GoToSettingsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding UpdateStatusText}" Command="{Binding CheckForUpdatesCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 
                 <StackPanel VerticalAlignment="Bottom" Margin="0,40,0,0" Spacing="10">
+                    <Button Content="🌗 Toggle Theme" Command="{Binding ToggleThemeCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                    
                     <TextBlock Text="Language / Ururimi" FontSize="10" Foreground="Gray"/>
                     <Grid ColumnDefinitions="*,*,*">
                        <Button Content="EN" Command="{Binding ChangeLanguageCommand}" CommandParameter="en" Background="Transparent" BorderThickness="0" FontSize="10"/>

@@ -1,7 +1,7 @@
 [Setup]
 ; Basic Information
 AppName=Inventory Management System
-AppVersion=1.2.0
+AppVersion=1.2.2
 AppPublisher=IMS Professional
 AppPublisherURL=https://mwimule.com/ims
 AppSupportURL=https://mwimule.com/support
@@ -11,7 +11,7 @@ AppUpdatesURL=https://mwimule.com/updates
 DefaultDirName={autopf}\InventoryManagementSystem
 DefaultGroupName=Inventory Management System
 OutputDir=./Releases
-OutputBaseFilename=IMS_Setup_v1.2.0_Windows
+OutputBaseFilename=IMS_Setup_v1.2.2_Windows
 Compression=zip
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64

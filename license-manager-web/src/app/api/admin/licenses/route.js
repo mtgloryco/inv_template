@@ -48,7 +48,8 @@ export async function GET(request) {
                     paymentProof: 1,
                     createdAt: 1,
                     'userDetails.email': 1,
-                    'userDetails.username': 1
+                    'userDetails.username': 1,
+                    manualIssuedTo: 1
                 }
             }
         ])
@@ -57,6 +58,67 @@ export async function GET(request) {
 
     return NextResponse.json(licenses);
 }
+
+// Manual License Generation by Admin
+export async function POST(request) {
+    const user = await getAuthUser(request);
+    if (!user || user.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    try {
+        const { name, hardwareId, tier, durationDays } = await request.json();
+
+        if (!name || !hardwareId || !tier) {
+            return NextResponse.json({ error: 'Name, Hardware ID, and Tier are required.' }, { status: 400 });
+        }
+
+        const issuedAt = new Date();
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + (parseInt(durationDays) || 365));
+
+        const licenseId = require('uuid').v4(); // Ensure uuid is imported or use crypto.randomUUID
+
+        const payload = {
+            licenseId,
+            hardwareId,
+            issuedTo: name,
+            issuedAt: issuedAt.toISOString(),
+            expiry: expirationDate.toISOString(),
+            tier
+        };
+
+        const licenseKey = signLicense(payload);
+
+        const newLicense = {
+            licenseId,
+            userId: null, // No system user linked
+            manualIssuedTo: name,
+            hardwareId,
+            tier,
+            planType: tier.toLowerCase(), // approximate mapping
+            status: 'Active',
+            paymentProof: null,
+            issuedAt,
+            expirationDate,
+            licenseKey,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const client = await clientPromise;
+        const db = client.db('license_manager');
+
+        await db.collection('licenses').insertOne(newLicense);
+
+        return NextResponse.json(newLicense, { status: 201 });
+
+    } catch (error) {
+        console.error('Manual License Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
 
 export async function PATCH(request) {
     const user = await getAuthUser(request);

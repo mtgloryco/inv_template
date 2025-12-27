@@ -8,17 +8,17 @@
              x:DataType="vm:LoginViewModel">
     
     <Grid>
-        <Border Background="White" CornerRadius="8" Padding="30" 
+        <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="30" 
                 HorizontalAlignment="Center" VerticalAlignment="Center" 
                 Width="350" BoxShadow="0 4 10 0 #33000000">
             <StackPanel Spacing="15">
-                <TextBlock Text="Inventory Login" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <TextBlock Text="Inventory Login" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10" Foreground="{DynamicResource TextPrimaryColor}"/>
                 
-                <TextBlock Text="Username" />
-                <TextBox Text="{Binding Username}" Watermark="Enter username"/>
+                <TextBlock Text="Username" Foreground="{DynamicResource TextSecondaryColor}"/>
+                <TextBox Text="{Binding Username}" Watermark="Enter username" Background="{DynamicResource PageBackgroundColor}" Foreground="{DynamicResource TextPrimaryColor}"/>
                 
-                <TextBlock Text="Password" />
-                <TextBox Text="{Binding Password}" Watermark="Enter password" PasswordChar="*"/>
+                <TextBlock Text="Password" Foreground="{DynamicResource TextSecondaryColor}"/>
+                <TextBox Text="{Binding Password}" Watermark="Enter password" PasswordChar="*" Background="{DynamicResource PageBackgroundColor}" Foreground="{DynamicResource TextPrimaryColor}"/>
                 
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" />
                 

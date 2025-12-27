@@ -19,6 +19,21 @@ export async function POST(request) {
 
         // 2. Automated Path: 6 Hours (Free)
         if (duration === '6h') {
+            const client = await clientPromise;
+            const db = client.db('license_manager');
+
+            // Check if this HWID has already used a 6h trial
+            const existingTrial = await db.collection('demo_requests').findOne({
+                hardwareId: hardwareId,
+                duration: '6h'
+            });
+
+            if (existingTrial) {
+                return NextResponse.json({
+                    error: 'Free trial already used on this device. Please purchase a daily pass.'
+                }, { status: 403 });
+            }
+
             // Generate License Immediately
             const expiry = new Date();
             expiry.setHours(expiry.getHours() + 6);
@@ -35,9 +50,6 @@ export async function POST(request) {
             const licenseKey = signLicense(payload);
 
             // Log the "Active" demo in DB for record keeping
-            const client = await clientPromise;
-            const db = client.db('license_manager');
-
             await db.collection('demo_requests').insertOne({
                 name,
                 email,

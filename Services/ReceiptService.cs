@@ -10,8 +10,11 @@ namespace InventoryManagementSystem.Services
 {
     public class ReceiptService
     {
-        public ReceiptService()
+        private readonly SettingsService _settingsService;
+
+        public ReceiptService(SettingsService settingsService)
         {
+            _settingsService = settingsService;
             // QuestPDF Community License (Free for individuals and small businesses < $1M revenue)
             QuestPDF.Settings.License = LicenseType.Community;
         }
@@ -35,8 +38,14 @@ namespace InventoryManagementSystem.Services
                     page.DefaultTextStyle(x => x.FontSize(10));
 
                     page.Header()
-                        .Text("INVENTORY SYSTEM")
-                        .SemiBold().FontSize(16).AlignCenter();
+                        .Column(col =>
+                        {
+                            col.Item().Text(_settingsService.CurrentSettings.StoreName).SemiBold().FontSize(16).AlignCenter();
+                            if (!string.IsNullOrEmpty(_settingsService.CurrentSettings.StoreAddress))
+                            {
+                                col.Item().Text(_settingsService.CurrentSettings.StoreAddress).FontSize(10).AlignCenter().FontColor(Colors.Grey.Medium);
+                            }
+                        });
 
                     page.Content()
                         .PaddingVertical(1, Unit.Centimetre)
@@ -123,8 +132,8 @@ namespace InventoryManagementSystem.Services
                     page.Header()
                         .Column(col =>
                         {
-                            col.Item().Text("IMS STORE").FontSize(18).SemiBold().AlignCenter();
-                            col.Item().Text("Kigali, Rwanda").FontSize(10).AlignCenter().FontColor(Colors.Grey.Medium);
+                            col.Item().Text(_settingsService.CurrentSettings.StoreName).FontSize(18).SemiBold().AlignCenter();
+                            col.Item().Text(_settingsService.CurrentSettings.StoreAddress).FontSize(10).AlignCenter().FontColor(Colors.Grey.Medium);
                         });
 
                     page.Content()

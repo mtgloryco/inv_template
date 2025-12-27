@@ -16,8 +16,6 @@ namespace InventoryManagementSystem.Services
             _databaseService = databaseService;
         }
 
-        // 1. REORDER RECOMMENDATIONS
-        // Logic: Suggest reorder if Stock < 5 or Stock < (AvgDailySales * 7)
         public async Task<List<ProductRecommendation>> GetReorderRecommendationsAsync()
         {
             var products = await _databaseService.Connection.Table<Product>().ToListAsync();
@@ -40,12 +38,10 @@ namespace InventoryManagementSystem.Services
             return recommendations;
         }
 
-        // 2. DEAD STOCK ALERTS
-        // Logic: Items with Stock > 0 but NO sales in the specified range (Default: last 90 days)
         public async Task<List<ProductRecommendation>> GetDeadStockAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
             var end = endDate ?? DateTime.Now;
-            var start = startDate ?? end.AddDays(-90); // Default lookback 90 days
+            var start = startDate ?? end.AddDays(-90);
             
             // Get all products with stock
             var productsWithStock = await _databaseService.Connection.Table<Product>()

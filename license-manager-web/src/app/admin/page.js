@@ -21,6 +21,7 @@ export default function AdminDashboard() {
 
     // UI States
     const [replyModal, setReplyModal] = useState(null); // { id, name, replyMessage: '' }
+    const [manualModal, setManualModal] = useState(null); // { name: '', hardwareId: '', tier: 'Enterprise', durationDays: 365 }
     const [planModal, setPlanModal] = useState(null);   // { mode: 'edit'|'add', plan: {} }
     const [downloadModal, setDownloadModal] = useState(null); // { mode: 'add'|'edit', item: {} }
 
@@ -83,6 +84,28 @@ export default function AdminDashboard() {
             if (res.ok) fetchAdminData();
             else alert('Approval failed');
         } catch (err) { alert('Error'); }
+    };
+
+    const handleManualGenerate = async () => {
+        if (!manualModal.name || !manualModal.hardwareId) return alert('Name and Hardware ID are required');
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch('/api/admin/licenses', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(manualModal)
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setManualModal(null);
+                fetchAdminData();
+                prompt('License Generated! Copy key below:', data.licenseKey);
+            } else {
+                const err = await res.json();
+                alert('Failed: ' + err.error);
+            }
+        } catch (err) { alert('Error generating license'); }
     };
 
     const handleUpdateStatus = async (id, status) => {
@@ -162,8 +185,10 @@ export default function AdminDashboard() {
 
     // --- FILTERING ---
     const filteredLicenses = licenses.filter(l =>
-        l.userDetails?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.userDetails?.username?.toLowerCase().includes(searchQuery.toLowerCase())
+    (l.userDetails?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.userDetails?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.manualIssuedTo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.hardwareId?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
     const filteredContacts = contacts.filter(c =>
         c.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -182,7 +207,7 @@ export default function AdminDashboard() {
                         <Search size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: '#666' }} />
                         <input
                             type="text"
-                            placeholder="Search by email..."
+                            placeholder="Search by email, name, or HWID..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: '100%', padding: '8px 10px 8px 35px', borderRadius: '6px', border: 'none', background: '#374151', color: '#fff', fontSize: '0.9rem' }}
@@ -214,7 +239,12 @@ export default function AdminDashboard() {
                         </div>
 
                         <section className="glass-card" style={{ background: '#fff' }}>
-                            <h3 style={{ marginBottom: '1.5rem' }}>License Request Log</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h3 style={{ marginBottom: '0' }}>License Request Log</h3>
+                                <button className="btn btn-primary" onClick={() => setManualModal({ name: '', hardwareId: '', tier: 'Enterprise', durationDays: 365 })}>
+                                    <Plus size={16} /> Manual Issue
+                                </button>
+                            </div>
                             <div className="table-container">
                                 <table>
                                     <thead>
@@ -230,8 +260,11 @@ export default function AdminDashboard() {
                                         {filteredLicenses.map(lic => (
                                             <tr key={lic._id}>
                                                 <td>
-                                                    <div style={{ fontWeight: 700 }}>{lic.userDetails?.username}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{lic.userDetails?.email}</div>
+                                                    <div style={{ fontWeight: 700 }}>
+                                                        {lic.userDetails?.username || lic.manualIssuedTo || 'Unknown'}
+                                                        {lic.manualIssuedTo && <span style={{ fontSize: '0.6rem', color: '#f59e0b', marginLeft: '4px' }}>(Manual)</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{lic.userDetails?.email || '-'}</div>
                                                     <span style={{ fontSize: '0.65rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{lic.tier}</span>
                                                 </td>
                                                 <td><span className={`status-badge status-${lic.status?.toLowerCase()}`}>{lic.status}</span></td>
@@ -396,6 +429,58 @@ export default function AdminDashboard() {
             </div>
 
             {/* MODALS */}
+
+            {/* Manual Generate Modal */}
+            {manualModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>Manual License Activation</h3>
+                        <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem' }}>
+                            Generate a full license key for a client directly. No account required.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <input
+                                type="text"
+                                placeholder="Client Name / Issued To"
+                                value={manualModal.name}
+                                onChange={e => setManualModal({ ...manualModal, name: e.target.value })}
+                                className="input-field"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Hardware ID"
+                                value={manualModal.hardwareId}
+                                onChange={e => setManualModal({ ...manualModal, hardwareId: e.target.value })}
+                                className="input-field"
+                                style={{ fontFamily: 'monospace' }}
+                            />
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <select
+                                    value={manualModal.tier}
+                                    onChange={e => setManualModal({ ...manualModal, tier: e.target.value })}
+                                    className="input-field"
+                                >
+                                    <option value="Basic">Basic</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Pro">Pro</option>
+                                    <option value="Enterprise">Enterprise</option>
+                                </select>
+                                <input
+                                    type="number"
+                                    placeholder="Duration (Days)"
+                                    value={manualModal.durationDays}
+                                    onChange={e => setManualModal({ ...manualModal, durationDays: e.target.value })}
+                                    className="input-field"
+                                />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                            <button onClick={() => setManualModal(null)} className="btn">Cancel</button>
+                            <button onClick={handleManualGenerate} className="btn btn-primary">Generate & Activate</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Proof Modal */}
             {selectedProof && (

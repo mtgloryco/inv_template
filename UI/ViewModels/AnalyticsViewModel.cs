@@ -24,9 +24,12 @@ public partial class AnalyticsViewModel : ViewModelBase
     public ObservableCollection<ProductRecommendation> DeadStockList { get; } = new();
     public ObservableCollection<ProductRecommendation> LowMarginList { get; } = new();
 
-    public AnalyticsViewModel(AnalyticsService analyticsService)
+    public LanguageService Language { get; }
+
+    public AnalyticsViewModel(AnalyticsService analyticsService, LanguageService languageService)
     {
         _analyticsService = analyticsService;
+        Language = languageService;
         _ = LoadData();
     }
 

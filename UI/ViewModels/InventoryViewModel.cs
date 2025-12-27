@@ -66,10 +66,17 @@ namespace InventoryManagementSystem.UI.ViewModels
         public bool IsMovementIn => SelectedMovementType == "IN";
         public bool IsMovementOut => SelectedMovementType == "OUT";
 
-        public InventoryViewModel(InventoryService inventoryService, LicenseService licenseService)
+        public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
+        public LanguageService Language { get; }
+
+        private readonly SettingsService _settingsService;
+
+        public InventoryViewModel(InventoryService inventoryService, LicenseService licenseService, SettingsService settingsService, LanguageService languageService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
+            _settingsService = settingsService;
+            Language = languageService;
             LoadProductsCommand.Execute(null);
         }
 
@@ -121,7 +128,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private void OpenAddProductPane()
         {
             CurrentProduct = new Product();
-            PaneTitle = "New Product";
+            PaneTitle = Language["Inv_NewProduct"];
             IsStockMode = false;
             IsPaneOpen = true;
         }
@@ -142,7 +149,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                 Cost = product.Cost,
                 StockQuantity = product.StockQuantity
             };
-            PaneTitle = "Edit Product";
+            PaneTitle = Language["Inv_PaneTitle"]; // "Manage Product" or "Edit Product"
             IsStockMode = false;
             IsPaneOpen = true;
         }
@@ -151,7 +158,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private void OpenStockPane(Product product)
         {
             CurrentProduct = product; // No cloning needed for reference, but be careful not to edit props
-            PaneTitle = $"Stock Adjustment: {product.Name}";
+            PaneTitle = $"{Language["Inv_Stock"]} - {product.Name}";
             IsStockMode = true;
             AdjustmentQuantity = 0;
             AdjustmentReason = "";

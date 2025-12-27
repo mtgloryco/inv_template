@@ -15,6 +15,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly AnalyticsService _analyticsService;
     private readonly ReceiptService _receiptService;
     private readonly UpdateService _updateService;
+    private readonly SettingsService _settingsService;
 
     // Navigation Stack
     private readonly System.Collections.Generic.Stack<ViewModelBase> _navigationStack = new();
@@ -46,14 +47,13 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _updateStatusText = "Check Updates"; // Button Label
 
-
     [ObservableProperty]
     private string _updateVersion = "";
 
     [ObservableProperty]
     private string _releaseNotesUrl = "";
 
-    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService, UpdateService updateService)
+    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService, UpdateService updateService, SettingsService settingsService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -63,6 +63,7 @@ public partial class MainViewModel : ViewModelBase
         _receiptService = receiptService;
         Language = languageService;
         _updateService = updateService;
+        _settingsService = settingsService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -103,7 +104,7 @@ public partial class MainViewModel : ViewModelBase
         IsAdmin = UserSession.IsAdmin;
         
         // Start fresh on Dashboard, clearing any login/license history
-        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS);
+        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS);
         _navigationStack.Clear();
         CanGoBack = false;
         OnPropertyChanged(nameof(SidebarGridLength));
@@ -162,14 +163,14 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToDashboard()
     {
-        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS));
-        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, GoToInventory, GoToReports, GoToPOS));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS));
         SidebarGridLength = new Avalonia.Controls.GridLength(250);
 
     }
 
     [RelayCommand]
-    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService));
+    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language));
 
     [RelayCommand]
     public void GoToReports()
@@ -180,7 +181,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense(); 
             return;
         }
-        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService));
+        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService, _settingsService, Language));
     }
 
     [RelayCommand]
@@ -192,7 +193,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService));
+        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService, _settingsService, Language));
     }
 
     [RelayCommand]
@@ -204,7 +205,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        NavigateTo(new AnalyticsViewModel(_analyticsService));
+        NavigateTo(new AnalyticsViewModel(_analyticsService, Language));
     }
 
     [RelayCommand]
@@ -214,6 +215,12 @@ public partial class MainViewModel : ViewModelBase
         {
             NavigateTo(new UsersViewModel(_userService));
         }
+    }
+
+    [RelayCommand]
+    public void GoToSettings()
+    {
+        NavigateTo(new SettingsViewModel(_settingsService, Language));
     }
 
     private void OnActivationSuccess()
@@ -291,5 +298,18 @@ public partial class MainViewModel : ViewModelBase
     public async Task InstallUpdate()
     {
         await _updateService.DownloadAndRestartAsync();
+    }
+
+    [RelayCommand]
+    public void ToggleTheme()
+    {
+        var app = Avalonia.Application.Current;
+        if (app is not null)
+        {
+            var currentTheme = app.RequestedThemeVariant;
+            app.RequestedThemeVariant = currentTheme == Avalonia.Styling.ThemeVariant.Dark 
+                ? Avalonia.Styling.ThemeVariant.Light 
+                : Avalonia.Styling.ThemeVariant.Dark;
+        }
     }
 }

@@ -13,4 +13,27 @@
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
     </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="PageBackgroundColor">#F5F5F5</SolidColorBrush>
+                    <SolidColorBrush x:Key="ContentBackgroundColor">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextPrimaryColor">#333333</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextSecondaryColor">#666666</SolidColorBrush>
+                    <SolidColorBrush x:Key="CardShadowColor">#10000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="BorderColor">#EEEEEE</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="PageBackgroundColor">#121212</SolidColorBrush>
+                    <SolidColorBrush x:Key="ContentBackgroundColor">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextPrimaryColor">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextSecondaryColor">#AAAAAA</SolidColorBrush>
+                    <SolidColorBrush x:Key="CardShadowColor">#40000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="BorderColor">#333333</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

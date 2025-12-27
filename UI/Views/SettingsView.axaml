@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="InventoryManagementSystem.UI.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource PageBackgroundColor}">
+
+    <Grid RowDefinitions="Auto, *" Margin="40">
+        <!-- Header -->
+        <TextBlock Text="{Binding Language.Resources[Settings_Title]}" FontSize="28" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryColor}" Margin="0,0,0,30" />
+
+        <Border Grid.Row="1" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" Padding="40">
+            <ScrollViewer>
+                <StackPanel Spacing="20" MaxWidth="600" HorizontalAlignment="Left">
+                    
+                    <StackPanel Spacing="5">
+                         <TextBlock Text="{Binding Language.Resources[Settings_StoreInfo]}" FontSize="20" FontWeight="Bold"/>
+                         <TextBlock Text="{Binding Language.Resources[Settings_StoreInfoDesc]}" Foreground="Gray" Margin="0,0,0,10"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Language.Resources[Settings_StoreName]}" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding StoreName}" Watermark="{Binding Language.Resources[Settings_StoreName]}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Language.Resources[Settings_Address]}" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding StoreAddress}" Watermark="{Binding Language.Resources[Settings_Address]}" Height="80" AcceptsReturn="True"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Language.Resources[Settings_Currency]}" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding CurrencySymbol}" Watermark="e.g. RWF, $, €" Width="150" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Language.Resources[Settings_Printer]}" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding PrinterName}" Watermark="{Binding Language.Resources[Settings_Printer]}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,20,0,0">
+                        <Button Content="{Binding Language.Resources[Settings_Save]}" Command="{Binding SaveSettingsCommand}"
+                                Classes="accent" Padding="20,10" FontWeight="SemiBold"/>
+                        
+                        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#4CAF50" FontWeight="Medium"/>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

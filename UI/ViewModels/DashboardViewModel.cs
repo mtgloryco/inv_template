@@ -78,12 +78,17 @@ namespace InventoryManagementSystem.UI.ViewModels
         public List<string> AdjTypes { get; } = new() { "IN", "OUT", "ADJUST" };
 
         public LanguageService Language { get; }
+        public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
+        public string AppVersion => "v1.0.0"; // Could be pulled from Assembly in future
 
-        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, Action goToInventory, Action goToReports, Action goToPOS)
+        private readonly SettingsService _settingsService;
+
+        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, SettingsService settingsService, Action goToInventory, Action goToReports, Action goToPOS)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService; // Store for future checks
             Language = languageService;
+            _settingsService = settingsService;
             
             _goToInventory = goToInventory;
             _goToReports = goToReports;

@@ -25,10 +25,17 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         public bool IsStockReport => !IsHistoryReport && !IsProfitReport;
 
-        public ReportsViewModel(InventoryService inventoryService, LicenseService licenseService)
+        public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
+        public LanguageService Language { get; }
+
+        private readonly SettingsService _settingsService;
+
+        public ReportsViewModel(InventoryService inventoryService, LicenseService licenseService, SettingsService settingsService, LanguageService languageService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
+            _settingsService = settingsService;
+            Language = languageService;
             LoadStockReportCommand.Execute(null);
         }
 

@@ -5,12 +5,13 @@
              xmlns:vm="using:InventoryManagementSystem.UI.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="InventoryManagementSystem.UI.Views.InventoryView"
-             x:DataType="vm:InventoryViewModel">
+             x:DataType="vm:InventoryViewModel"
+             x:Name="Root">
     
     <SplitView IsPaneOpen="{Binding IsPaneOpen}"
                DisplayMode="Overlay"
                OpenPaneLength="400"
-               PaneBackground="White">
+               PaneBackground="{DynamicResource ContentBackgroundColor}">
         
         <SplitView.Pane>
             <Border Padding="20">
@@ -19,44 +20,44 @@
                     
                     <!-- Product Form -->
                     <StackPanel Spacing="15" IsVisible="{Binding !IsStockMode}">
-                        <TextBox Watermark="Product Name" Text="{Binding CurrentProduct.Name}" />
-                        <TextBox Watermark="SKU" Text="{Binding CurrentProduct.SKU}" />
-                        <TextBox Watermark="Category" Text="{Binding CurrentProduct.Category}" />
-                        <TextBox Watermark="Unit (e.g., Pcs, Kg)" Text="{Binding CurrentProduct.Unit}" />
+                        <TextBox Watermark="{Binding Language.Resources[Inv_ProductName]}" Text="{Binding CurrentProduct.Name}" />
+                        <TextBox Watermark="{Binding Language.Resources[Inv_SKU]}" Text="{Binding CurrentProduct.SKU}" />
+                        <TextBox Watermark="{Binding Language.Resources[Inv_Category]}" Text="{Binding CurrentProduct.Category}" />
+                        <TextBox Watermark="{Binding Language.Resources[Inv_Unit]}" Text="{Binding CurrentProduct.Unit}" />
                         
                         <!-- Price and Cost are now set only during Stock Actions -->
                         
-                        <TextBox Watermark="Initial Stock" Text="{Binding CurrentProduct.StockQuantity}" IsEnabled="{Binding CurrentProduct.Id, Converter={x:Static ObjectConverters.IsNull}}"/>
+                        <TextBox Watermark="{Binding Language.Resources[Inv_InitialStock]}" Text="{Binding CurrentProduct.StockQuantity}" IsEnabled="{Binding CurrentProduct.Id, Converter={x:Static ObjectConverters.IsNull}}"/>
                     </StackPanel>
 
                     <!-- Stock Adjustment Form -->
                     <StackPanel Spacing="15" IsVisible="{Binding IsStockMode}">
-                        <TextBlock Text="Movement Type" FontSize="12"/>
+                        <TextBlock Text="{Binding Language.Resources[Inv_MovementType]}" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding MovementTypes}" SelectedItem="{Binding SelectedMovementType}" HorizontalAlignment="Stretch"/>
                         
-                        <TextBlock Text="Quantity" FontSize="12"/>
-                        <TextBox Watermark="Quantity" Text="{Binding AdjustmentQuantity}" />
+                        <TextBlock Text="{Binding Language.Resources[Inv_Quantity]}" FontSize="12"/>
+                        <TextBox Watermark="{Binding Language.Resources[Inv_Quantity]}" Text="{Binding AdjustmentQuantity}" />
 
                         <!-- Batch Financials -->
                         <StackPanel IsVisible="{Binding IsMovementIn}" Spacing="5">
-                            <TextBlock Text="Cost per Unit" FontSize="12"/>
-                            <TextBox Watermark="Purchase Cost" Text="{Binding AdjustmentCostPerUnit}" />
+                            <TextBlock Text="{Binding Language.Resources[Inv_CostPerUnit]}" FontSize="12"/>
+                            <TextBox Watermark="{Binding Language.Resources[Inv_CostPerUnit]}" Text="{Binding AdjustmentCostPerUnit}" />
                         </StackPanel>
 
                         <StackPanel IsVisible="{Binding IsMovementOut}" Spacing="5">
-                            <TextBlock Text="Selling Price (per unit)" FontSize="12"/>
-                            <TextBox Watermark="Selling Price" Text="{Binding AdjustmentUnitPrice}" />
+                            <TextBlock Text="{Binding Language.Resources[Inv_SellingPrice]}" FontSize="12"/>
+                            <TextBox Watermark="{Binding Language.Resources[Inv_SellingPrice]}" Text="{Binding AdjustmentUnitPrice}" />
                         </StackPanel>
                         
-                        <TextBlock Text="Reason" FontSize="12"/>
-                        <TextBox Watermark="Reason (e.g., Damaged, Restock)" Text="{Binding AdjustmentReason}" />
+                        <TextBlock Text="{Binding Language.Resources[Inv_Reason]}" FontSize="12"/>
+                        <TextBox Watermark="{Binding Language.Resources[Inv_Reason]}" Text="{Binding AdjustmentReason}" />
                     </StackPanel>
 
                     <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding HasError}"/>
                     
                     <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="Cancel" Command="{Binding CancelPaneCommand}" />
-                        <Button Content="Save" Classes="accent" Command="{Binding SaveProductCommand}" Background="#007ACC" Foreground="White" />
+                        <Button Content="{Binding Language.Resources[Inv_Cancel]}" Command="{Binding CancelPaneCommand}" />
+                        <Button Content="{Binding Language.Resources[Inv_Save]}" Classes="accent" Command="{Binding SaveProductCommand}" Background="#007ACC" Foreground="White" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -66,16 +67,16 @@
             <Grid RowDefinitions="Auto, *">
                 <!-- Header / Toolbar -->
                 <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,0,10,10">
-                    <TextBox Text="{Binding SearchText}" Watermark="Search products..." Width="300" HorizontalAlignment="Left"/>
+                    <TextBox Text="{Binding SearchText}" Watermark="{Binding Language.Resources[Inv_SearchPlaceholder]}" Width="300" HorizontalAlignment="Left"/>
                     
                     <Button Grid.Column="1" Margin="0,0,10,0" 
-                            Content="Import (CSV)" 
+                            Content="{Binding Language.Resources[Inv_Import]}" 
                             Command="{Binding ImportProductsCommand}" 
                             IsEnabled="{Binding CanBulkImport}"
                             ToolTip.Tip="{Binding BulkImportTooltip}"
-                            Background="#F5F5F5" />
+                            Background="{DynamicResource PageBackgroundColor}" />
                             
-                    <Button Grid.Column="2" Content="+ New Product" Command="{Binding OpenAddProductPaneCommand}" Background="#2E7D32" Foreground="White"/>
+                    <Button Grid.Column="2" Content="{Binding Language.Resources[Inv_NewProduct]}" Command="{Binding OpenAddProductPaneCommand}" Background="#2E7D32" Foreground="White"/>
                 </Grid>
 
                 <!-- Product List -->
@@ -85,18 +86,27 @@
                           IsReadOnly="True" 
                           CanUserSortColumns="True"
                           GridLinesVisibility="All"
-                          BorderThickness="1" BorderBrush="#EEE" Background="White">
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" Background="{DynamicResource ContentBackgroundColor}">
                     <DataGrid.Columns>
                         <!-- Removed ID Column -->
-                        <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="100"/>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100"/>
-                        <DataGridTextColumn Header="Stock" Binding="{Binding StockQuantity}" Width="80"/>
-                        <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="60"/>
+                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_SKU]}" Binding="{Binding SKU}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_ProductName]}" Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Category]}" Binding="{Binding Category}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Stock]}" Binding="{Binding StockQuantity}" Width="80"/>
+                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Unit]}" Binding="{Binding Unit}" Width="60"/>
                         <!-- Price is roughly displayed here, but actual sale price is set per transaction -->
-                        <DataGridTextColumn Header="Selling Price" Binding="{Binding Price, StringFormat={}{0:C}}" Width="100"/>
+                        <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_SellingPrice]}" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" Margin="5,0,0,0">
+                                        <Run Text="{Binding Price, StringFormat='{}{0:N0}'}"/>
+                                        <Run Text="{Binding #Root.DataContext.CurrencySymbol}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         
-                        <DataGridTemplateColumn Header="Actions" Width="190">
+                        <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_Actions]}" Width="190">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="5">

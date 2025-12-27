@@ -14,10 +14,10 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="{Binding WelcomeMessage}" FontSize="28" FontWeight="SemiBold" Foreground="#333"/>
-                            <TextBlock Text="v1.1 (Patched)" FontSize="12" Foreground="#EF4444" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding WelcomeMessage}" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}"/>
+                            <TextBlock Text="{Binding AppVersion}" FontSize="12" Foreground="#EF4444" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="Here's what's happening in your inventory today." Foreground="#666" Margin="0,5,0,0"/>
+                        <TextBlock Text="Here's what's happening in your inventory today." Foreground="{DynamicResource TextSecondaryColor}" Margin="0,5,0,0"/>
                     </StackPanel>
                     
                     <Button Grid.Column="1" Command="{Binding LoadDashboardDataCommand}" Content="Refresh" Background="Transparent" Foreground="#007ACC" BorderThickness="0"/>
@@ -36,47 +36,56 @@
 
                 <!-- Financial Cards -->
                 <Grid ColumnDefinitions="*,15,*,15,*" RowDefinitions="Auto">
-                    <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="Total Revenue" Foreground="#888" FontSize="14"/>
-                            <TextBlock Text="{Binding TotalRevenue, StringFormat={}{0:C}}" FontSize="28" FontWeight="Bold" Foreground="#2E7D32" Margin="0,5,0,0"/>
+                            <TextBlock Text="Total Revenue" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
+                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="#2E7D32" Margin="0,5,0,0">
+                                <Run Text="{Binding TotalRevenue, StringFormat={}{0:N0}}"/>
+                                <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
+                            </TextBlock>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="Total Profit" Foreground="#888" FontSize="14"/>
+                            <TextBlock Text="Total Profit" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
                             <Panel>
-                                <TextBlock Text="{Binding TotalProfit, StringFormat={}{0:C}}" FontSize="28" FontWeight="Bold" Foreground="#007ACC" Margin="0,5,0,0" IsVisible="{Binding ShowFinancials}"/>
+                                <TextBlock FontSize="28" FontWeight="Bold" Foreground="#007ACC" Margin="0,5,0,0" IsVisible="{Binding ShowFinancials}">
+                                    <Run Text="{Binding TotalProfit, StringFormat={}{0:N0}}"/>
+                                    <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
+                                </TextBlock>
                                 <TextBlock Text="LOCKED" FontSize="24" FontWeight="Bold" Foreground="#CCC" Margin="0,5,0,0" IsVisible="{Binding HideFinancials}"/>
                             </Panel>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="4" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="Inventory Value" Foreground="#888" FontSize="14"/>
-                            <TextBlock Text="{Binding TotalInventoryValue, StringFormat={}{0:C}}" FontSize="28" FontWeight="Bold" Foreground="#F57C00" Margin="0,5,0,0"/>
+                            <TextBlock Text="Inventory Value" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
+                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="#F57C00" Margin="0,5,0,0">
+                                <Run Text="{Binding TotalInventoryValue, StringFormat={}{0:N0}}"/>
+                                <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
+                            </TextBlock>
                         </StackPanel>
                     </Border>
                 </Grid>
 
                 <!-- Operational Cards -->
                 <Grid ColumnDefinitions="*,15,*,15,*" RowDefinitions="Auto">
-                    <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="Total Products" Foreground="#888" FontSize="14"/>
-                            <TextBlock Text="{Binding TotalProducts}" FontSize="28" FontWeight="Bold" Foreground="#555" Margin="0,5,0,0"/>
+                            <TextBlock Text="Total Products" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
+                            <TextBlock Text="{Binding TotalProducts}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="Low Stock Alerts" Foreground="#888" FontSize="14"/>
+                            <TextBlock Text="Low Stock Alerts" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
                             <TextBlock Text="{Binding LowStockCount}" FontSize="28" FontWeight="Bold" Foreground="#FF5252" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="4" Background="White" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
+                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
                         <StackPanel>
-                            <TextBlock Text="License Tier" Foreground="#888" FontSize="14"/>
-                            <TextBlock Text="{Binding LicenseTypeDisplay}" FontSize="24" FontWeight="Bold" Foreground="#333" Margin="0,5,0,0"/>
+                            <TextBlock Text="License Tier" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
+                            <TextBlock Text="{Binding LicenseTypeDisplay}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
                             <TextBlock Text="{Binding LicenseStatusDisplay}" Foreground="#4CAF50" FontSize="12" Margin="0,5,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
@@ -84,7 +93,7 @@
 
                 <!-- Quick Actions -->
                 <StackPanel Spacing="15">
-                    <TextBlock Text="{Binding Language.Resources[QuickActions]}" FontWeight="Bold" FontSize="18" Foreground="#333"/>
+                    <TextBlock Text="{Binding Language.Resources[QuickActions]}" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource TextPrimaryColor}"/>
                     <StackPanel Orientation="Horizontal" Spacing="30">
                          <Button Classes="action-btn" Command="{Binding OpenAddProductModal}">
                              <StackPanel>
@@ -128,10 +137,10 @@
 
             <!-- Recent Activity Table -->
             <StackPanel Spacing="10">
-                <TextBlock Text="{Binding Language.Resources[RecentMovements]}" FontWeight="Bold" FontSize="18" Foreground="#333"/>
-                    <Border Background="White" CornerRadius="8" BoxShadow="0 2 8 0 #08000000" ClipToBounds="True">
+                <TextBlock Text="{Binding Language.Resources[RecentMovements]}" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource TextPrimaryColor}"/>
+                    <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" BoxShadow="0 2 8 0 #08000000" ClipToBounds="True">
                         <StackPanel>
-                            <Grid ColumnDefinitions="50,*,*,*,*,*" Background="#F5F5F5" Height="40">
+                            <Grid ColumnDefinitions="50,*,*,*,*,*" Background="{DynamicResource PageBackgroundColor}" Height="40">
                                 <TextBlock Text="#" FontWeight="SemiBold" VerticalAlignment="Center" Margin="15,0"/>
                                 <TextBlock Text="Product ID" Grid.Column="1" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="Type" Grid.Column="2" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -142,14 +151,14 @@
                             <ItemsControl ItemsSource="{Binding RecentMovements}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1">
+                                        <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1">
                                             <Grid ColumnDefinitions="50,*,*,*,*,*" Height="45" Background="Transparent">
-                                                <TextBlock Text="{Binding Id}" VerticalAlignment="Center" Margin="15,0" Foreground="#888"/>
+                                                <TextBlock Text="{Binding Id}" VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextSecondaryColor}"/>
                                                 <TextBlock Text="{Binding ProductId}" Grid.Column="1" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding MovementType}" Grid.Column="2" VerticalAlignment="Center" FontWeight="Medium"/>
                                                 <TextBlock Text="{Binding QuantityChanged}" Grid.Column="3" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Username}" Grid.Column="4" VerticalAlignment="Center" Foreground="#555"/>
-                                                <TextBlock Text="{Binding Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Grid.Column="5" VerticalAlignment="Center" Foreground="#888" FontSize="12"/>
+                                                <TextBlock Text="{Binding Username}" Grid.Column="4" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryColor}"/>
+                                                <TextBlock Text="{Binding Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Grid.Column="5" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryColor}" FontSize="12"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -164,10 +173,10 @@
 
         <!-- MODAL OVERLAY (Quick Actions) -->
         <Border Background="#44000000" IsVisible="{Binding IsModalOpen}">
-            <Border Background="White" CornerRadius="12" VerticalAlignment="Center" HorizontalAlignment="Center" Width="450" Padding="30" BoxShadow="0 10 40 0 #44000000">
+            <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" VerticalAlignment="Center" HorizontalAlignment="Center" Width="450" Padding="30" BoxShadow="0 10 40 0 #44000000">
                 <StackPanel Spacing="20">
-                    <TextBlock Text="{Binding ModalTitle}" FontSize="22" FontWeight="Bold" Foreground="#333"/>
-                    <Separator Height="1" Background="#EEE"/>
+                    <TextBlock Text="{Binding ModalTitle}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}"/>
+                    <Separator Height="1" Background="{DynamicResource BorderColor}"/>
 
                     <StackPanel Spacing="15" IsVisible="{Binding ShowProductForm}">
                         <StackPanel Spacing="5">
