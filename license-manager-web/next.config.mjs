@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/ads.txt',
-        destination: 'https://srv.adstxtmanager.com/19390/itims.online',
+        destination: 'https://srv.adstxtmanager.com/82008/itims.online',
         permanent: true,
       },
     ];
