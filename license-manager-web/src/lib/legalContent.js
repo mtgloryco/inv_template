@@ -6,7 +6,7 @@ export const LEGAL_CONTENT = {
         sections: [
             {
                 title: "1. Introduction",
-                content: <><p>IMS Manager ("We", "Us", "Our") is committed to your privacy and the security of your data. This Privacy Policy describes our policies on the collection, use, and disclosure of your information when you use the IMS Platform.</p><p>By using the Platform, you agree to the collection and use of information in accordance with this Privacy Policy.</p></>
+                content: <><p>IMS Manager (&quot;We&quot;, &quot;Us&quot;, &quot;Our&quot;) is committed to your privacy and the security of your data. This Privacy Policy describes our policies on the collection, use, and disclosure of your information when you use the IMS Platform.</p><p>By using the Platform, you agree to the collection and use of information in accordance with this Privacy Policy.</p></>
             },
             {
                 title: "2. Data Collection & Usage",
@@ -55,7 +55,7 @@ export const LEGAL_CONTENT = {
         sections: [
             {
                 title: "1. Agreement to Terms",
-                content: <p>These Terms of Use constitute a legally binding agreement made between you, whether personally or on behalf of an entity ("You") and IMS Manager ("Company"), concerning your access to and use of the IMS desktop application and website.</p>
+                content: <p>These Terms of Use constitute a legally binding agreement made between you, whether personally or on behalf of an entity (&quot;You&quot;) and IMS Manager (&quot;Company&quot;), concerning your access to and use of the IMS desktop application and website.</p>
             },
             {
                 title: "2. License Grant",

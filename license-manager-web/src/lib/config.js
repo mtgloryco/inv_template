@@ -1,32 +1,32 @@
 export const LICENSE_CONFIG = {
     plans: {
         'basic': {
-            name: 'Basic Starter',
+            name: 'IMS Basic',
             durationDays: 30, // Monthly
-            price: 1.99,
+            price: 5.00,
             tier: 'Basic',
-            description: 'Digital Inventory Notebook (No POS)'
+            description: 'Digital Inventory Notebook. Perfect for small retailers needing essential stock control.'
         },
         'medium': {
-            name: 'Medium Plan',
+            name: 'IMS Business',
             durationDays: 30, // Monthly
-            price: 3.68,
+            price: 15.00,
             tier: 'Medium',
-            description: 'Smart Cashier (POS + Receipts)'
+            description: 'The Smart Cashier. Full POS, Supplier Management, and multi-location tracking (up to 3).'
         },
         'pro': {
-            name: 'Pro Intelligence',
+            name: 'IMS Professional',
             durationDays: 30, // Monthly
-            price: 4.99,
+            price: 35.00,
             tier: 'Pro',
-            description: 'Complete Suite + Business Analytics'
+            description: 'Total ERP Suite. Advanced Analytics, Intelligent Forecasting, and unlimited locations.'
         },
         'enterprise': {
-            name: 'Enterprise',
+            name: 'IMS Enterprise',
             durationDays: 365,
             price: 0, // Contact Us
             tier: 'Enterprise',
-            description: 'Unlimited Access + Priority Support'
+            description: 'Global ERP Power. Cloud Sync, Audit Trails, and custom workflow automation.'
         }
     },
     limits: {

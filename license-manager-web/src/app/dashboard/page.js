@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Shield, Plus, LogOut, Clock, Layers, Monitor,
-  Copy, CheckCircle2, Upload, HelpCircle, Info, Image as ImageIcon
+  Copy, CheckCircle2, Upload, HelpCircle, Info, Image as LucideImage
 } from 'lucide-react';
 
 export default function UserDashboard() {
@@ -22,12 +22,7 @@ export default function UserDashboard() {
 
   const router = useRouter();
 
-  useEffect(() => {
-    fetchLicenses();
-    fetchPlans();
-  }, []);
-
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     try {
       const res = await fetch('/api/plans');
       const data = await res.json();
@@ -38,14 +33,9 @@ export default function UserDashboard() {
     } finally {
       setLoadingPlans(false);
     }
-  };
+  }, []);
 
-  const handleSelectPlan = (plan) => {
-    if (plan.price === 0) return; // Prevent selecting custom/enterprise
-    setSelectedPlan(plan.id);
-  };
-
-  const fetchLicenses = async () => {
+  const fetchLicenses = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
 
@@ -58,7 +48,18 @@ export default function UserDashboard() {
       setLicenses(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
+  }, [router]);
+
+  useEffect(() => {
+    fetchLicenses();
+    fetchPlans();
+  }, [fetchLicenses, fetchPlans]);
+
+  const handleSelectPlan = (plan) => {
+    if (plan.price === 0) return; // Prevent selecting custom/enterprise
+    setSelectedPlan(plan.id);
   };
+
 
   const handleRequestLicense = async () => {
     if (!hardwareId) { alert('Please enter your Hardware ID.'); return; }
@@ -252,7 +253,7 @@ export default function UserDashboard() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {lic.paymentProof ? (
                             <div style={{ fontSize: '0.7rem', color: '#48bb78', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <ImageIcon size={12} /> Proof Uploaded
+                              <LucideImage size={12} /> Proof Uploaded
                             </div>
                           ) : (
                             <label className="btn" style={{ background: '#edf2f7', fontSize: '0.7rem', padding: '6px 10px', cursor: 'pointer' }}>

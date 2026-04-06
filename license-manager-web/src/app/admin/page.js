@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 import {
     ShieldAlert, Activity, CreditCard, RefreshCw,
     Calendar, Trash2, CheckCircle, Mail, MessageSquare, Clock,
@@ -27,6 +28,36 @@ export default function AdminDashboard() {
 
     const router = useRouter();
 
+    const fetchAdminData = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch('/api/admin/licenses', { headers: { 'Authorization': `Bearer ${token}` } });
+            setLicenses(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    }, []);
+
+    const fetchContacts = useCallback(async () => {
+        try {
+            const res = await fetch('/api/contacts');
+            setContacts(await res.json());
+        } catch (err) { console.error(err); }
+    }, []);
+
+    const fetchPlans = useCallback(async () => {
+        try {
+            const res = await fetch('/api/plans');
+            setPlans(await res.json());
+        } catch (e) { console.error(e); }
+    }, []);
+
+    const fetchDownloads = useCallback(async () => {
+        try {
+            const res = await fetch('/api/downloads');
+            setDownloads(await res.json());
+        } catch (e) { console.error(e); }
+    }, []);
+
     useEffect(() => {
         const token = localStorage.getItem('token');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -38,37 +69,7 @@ export default function AdminDashboard() {
         fetchContacts();
         fetchPlans();
         fetchDownloads();
-    }, []);
-
-    const fetchAdminData = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const res = await fetch('/api/admin/licenses', { headers: { 'Authorization': `Bearer ${token}` } });
-            setLicenses(await res.json());
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
-    };
-
-    const fetchContacts = async () => {
-        try {
-            const res = await fetch('/api/contacts');
-            setContacts(await res.json());
-        } catch (err) { console.error(err); }
-    };
-
-    const fetchPlans = async () => {
-        try {
-            const res = await fetch('/api/plans');
-            setPlans(await res.json());
-        } catch (e) { console.error(e); }
-    };
-
-    const fetchDownloads = async () => {
-        try {
-            const res = await fetch('/api/downloads');
-            setDownloads(await res.json());
-        } catch (e) { console.error(e); }
-    };
+    }, [router, fetchAdminData, fetchContacts, fetchPlans, fetchDownloads]);
 
     // --- ACTIONS ---
 
@@ -490,7 +491,7 @@ export default function AdminDashboard() {
                         {selectedProof.startsWith('data:application/pdf') ? (
                             <iframe src={selectedProof} style={{ width: '100%', height: '100%', border: 'none' }} />
                         ) : (
-                            <img src={selectedProof} alt="Proof" style={{ maxWidth: '100%', height: 'auto', margin: '0 auto' }} />
+                            <NextImage src={selectedProof} alt="Proof" width={800} height={1200} unoptimized style={{ maxWidth: '100%', height: 'auto', margin: '0 auto' }} />
                         )}
                     </div>
                 </div>
@@ -504,7 +505,7 @@ export default function AdminDashboard() {
 
                         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #3b82f6', margin: '1rem 0', fontStyle: 'italic', color: '#555' }}>
                             <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem', color: '#3b82f6' }}>Original Message:</p>
-                            <p style={{ fontSize: '0.9rem' }}>"{replyModal.message}"</p>
+                            <p style={{ fontSize: '0.9rem' }}>&quot;{replyModal.message}&quot;</p>
                         </div>
 
                         <textarea

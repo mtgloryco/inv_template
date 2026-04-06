@@ -86,7 +86,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 </form>
 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
-                    Don't have an account? <button onClick={onSwitchToRegister} style={{ color: 'var(--primary)', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}>Register</button>
+                    Don&apos;t have an account? <button onClick={onSwitchToRegister} style={{ color: 'var(--primary)', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}>Register</button>
                 </div>
             </div>
             <style jsx>{`

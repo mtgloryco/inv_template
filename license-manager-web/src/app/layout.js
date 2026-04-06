@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import NativeBanner from "@/components/NativeBanner";
 
@@ -44,11 +45,13 @@ export default function RootLayout({ children }) {
         {children}
 
         {/* Ezoic Privacy & Helper Scripts (Moved to Body) */}
-        <script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js"></script>
-        <script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js"></script>
+        <Script strategy="afterInteractive" data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js" />
+        <Script strategy="afterInteractive" data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js" />
 
         {/* Ezoic Analytics Queue Init */}
-        <script
+        <Script
+          id="ezo-init"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
             window._ezaq = window._ezaq || [];
@@ -57,10 +60,10 @@ export default function RootLayout({ children }) {
           `,
           }}
         />
-        <script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
+        <Script strategy="lazyOnload" src="//www.ezojs.com/ezoic/sa.min.js" />
 
         {/* EffectiveGateCPM Main Script */}
-        <script src="https://pl28373489.effectivegatecpm.com/53/3b/f2/533bf2824e1da8c50fb338693c952f5d.js"></script>
+        <Script strategy="lazyOnload" src="https://pl28373489.effectivegatecpm.com/53/3b/f2/533bf2824e1da8c50fb338693c952f5d.js" />
 
         {/* Native Banner Component */}
         <NativeBanner />

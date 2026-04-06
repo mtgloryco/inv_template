@@ -68,12 +68,12 @@ export default function LandingPage() {
         id: key,
         ...plan,
         features: plan.tier === 'Enterprise'
-            ? ['Unlimited Everything', 'Priority Support', 'Custom Integrations', 'Dedicated Account Manager']
+            ? ['Real Cloud Sync', 'Global Audit Trail', 'Auto-Reorder Workflows', 'Custom API Integrations', 'Priority Support']
             : plan.tier === 'Pro'
-                ? ['POS System & Receipts', 'Business Analytics', 'Stock Forecasting', 'Profit & Loss Reports', 'Unlimited Products']
+                ? ['Intelligent Forecasting', 'Advanced BI Analytics', 'Full Reporting Engine', 'Kitting & Bundles', 'Unlimited Locations']
                 : plan.tier === 'Medium'
-                    ? ['POS System', 'Digital Receipts', 'Basic Reports', 'Up to 500 Products', 'Stock IN/OUT']
-                    : ['Digital Notebook', 'Stock Tracking', 'No POS Access', 'Max 50 Products', 'Local Backup']
+                    ? ['Smart POS & Receipts', 'Supplier Procurement', 'Expiry Tracking', 'Multi-location (Up to 3)', 'Returns Management']
+                    : ['Inventory Notebook', 'Stock Tracking', 'Local Backups', 'Max 50 Products', 'Single Location Only']
     }));
 
     const displayPlans = plans.length > 0 ? plans : staticPlans;
@@ -160,7 +160,7 @@ export default function LandingPage() {
             {/* Hero Section - Focused on IMS */}
             <header className="hero">
                 <div className="container hero-content">
-                    <div className="badge">PRODUCT VERSION 1.2.0-STABLE</div>
+                    <div className="badge">PRODUCT VERSION 2.0.0-ENTERPRISE</div>
                     <h1 className="hero-title">
                         Advanced Inventory <br />
                         <span className="text-gradient">Management System.</span>
@@ -291,7 +291,7 @@ export default function LandingPage() {
                             <div className="step-card">
                                 <span className="step-num">02</span>
                                 <h4>Create Account</h4>
-                                <p>Click "Get Started" on this website to create your account. You need this to manage your licenses.</p>
+                                <p>Click &quot;Get Started&quot; on this website to create your account. You need this to manage your licenses.</p>
                             </div>
                             <div className="step-card">
                                 <span className="step-num">03</span>
