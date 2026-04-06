@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="InventoryManagementSystem.UI.Views.SuppliersView"
+             x:DataType="vm:SuppliersViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="2*,*" Margin="20">
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Supplier Management" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <DataGrid Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" AutoGenerateColumns="False" Margin="0,0,12,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Contact" Binding="{Binding ContactPerson}" Width="*" />
+                <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="*" />
+                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="90" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="8">
+            <TextBlock Text="Add / Edit Supplier" FontWeight="SemiBold" />
+            <TextBox Watermark="Name" Text="{Binding CurrentSupplier.Name}" />
+            <TextBox Watermark="Contact Person" Text="{Binding CurrentSupplier.ContactPerson}" />
+            <TextBox Watermark="Phone" Text="{Binding CurrentSupplier.Phone}" />
+            <TextBox Watermark="Email" Text="{Binding CurrentSupplier.Email}" />
+            <TextBox Watermark="Address" Text="{Binding CurrentSupplier.Address}" />
+            <TextBox Watermark="Payment Terms (Net 30)" Text="{Binding CurrentSupplier.PaymentTerms}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Save" Command="{Binding SaveSupplierCommand}" />
+                <Button Content="Reload" Command="{Binding LoadSuppliersCommand}" />
+            </StackPanel>
+
+            <Border BorderBrush="#DDD" BorderThickness="1" Padding="8" Margin="0,12,0,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Supplier Performance" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedSupplierPerformance.TotalOrders, StringFormat='Orders: {0}'}" />
+                    <TextBlock Text="{Binding SelectedSupplierPerformance.OnTimeDeliveryPercent, StringFormat='On-time: {0:F1}%'}" />
+                    <TextBlock Text="{Binding SelectedSupplierPerformance.AverageLeadTimeDays, StringFormat='Avg lead time: {0:F1} days'}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Edit Selected" Command="{Binding EditSupplierCommand}" CommandParameter="{Binding SelectedSupplier}" />
+            <Button Content="Delete Selected" Command="{Binding DeleteSupplierCommand}" CommandParameter="{Binding SelectedSupplier}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

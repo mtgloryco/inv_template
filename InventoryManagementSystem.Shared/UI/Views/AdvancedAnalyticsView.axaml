@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
+             x:Class="InventoryManagementSystem.UI.Views.AdvancedAnalyticsView"
+             x:DataType="vm:AdvancedAnalyticsViewModel">
+
+    <Grid RowDefinitions="Auto, *">
+        <Border Grid.Row="0" Background="#673AB7" Padding="20">
+            <TextBlock Text="Advanced Inventory Insights" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Margin="20">
+            <StackPanel Spacing="30">
+                <!-- Health & Carrying Cost -->
+                <Grid ColumnDefinitions="*, 30, *">
+                    <Border Grid.Column="0" Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Inventory Health Score" FontSize="16" Foreground="Gray"/>
+                            <TextBlock Text="{Binding HealthScore, StringFormat='{}{0}%'}" FontSize="48" FontWeight="Bold" Foreground="#4CAF50"/>
+                            <ProgressBar Value="{Binding HealthScore}" Minimum="0" Maximum="100" Height="10" Foreground="#4CAF50"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Total Carrying Cost (Est.)" FontSize="16" Foreground="Gray"/>
+                            <TextBlock Text="{Binding CarryingCost, StringFormat='C2'}" FontSize="48" FontWeight="Bold" Foreground="#f44336"/>
+                            <TextBlock Text="Estimated annual cost of holding stock" FontSize="12" Foreground="Gray"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Profitability Ranking -->
+                <Border Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="Top 10 Most Profitable Products" FontSize="18" FontWeight="SemiBold"/>
+                        <DataGrid ItemsSource="{Binding TopProducts}" AutoGenerateColumns="False" IsReadOnly="True" Height="300">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*"/>
+                                <DataGridTextColumn Header="Revenue" Binding="{Binding TotalRevenue, StringFormat='C'}" Width="150"/>
+                                <DataGridTextColumn Header="Profit" Binding="{Binding TotalProfit, StringFormat='C'}" Width="150"/>
+                                <DataGridTextColumn Header="Margin %" Binding="{Binding MarginPercentage, StringFormat='P1'}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+
+                 <!-- Pareto Analysis -->
+                 <Border Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="ABC / Pareto Analysis (80/20 Rule)" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text="Class A products contribute to 80% of total revenue." FontSize="12" Foreground="Gray"/>
+                        <DataGrid ItemsSource="{Binding ParetoProducts}" AutoGenerateColumns="False" IsReadOnly="True" Height="300">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="100"/>
+                                <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*"/>
+                                <DataGridTextColumn Header="Revenue Contribution" Binding="{Binding TotalRevenue, StringFormat='C'}" Width="150"/>
+                                <DataGridTextColumn Header="Cumulative %" Binding="{Binding CumulativePercentage, StringFormat='P1'}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

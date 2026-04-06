@@ -22,28 +22,46 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         // Shared Service Initialization
-        var (inventoryService, userService, licenseService, hardwareService, analyticsService, receiptService, languageService, updateService, settingsService) = InitializeServices();
+        var services = InitializeServices();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel(inventoryService, userService, licenseService, hardwareService, analyticsService, receiptService, languageService, updateService, settingsService),
+                DataContext = new MainViewModel(
+                    services.inventory, services.user, services.license, services.hardware, 
+                    services.analytics, services.receipt, services.language, services.update, 
+                    services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
+                    services.expiry, services.location, services.returns, services.advancedAnalytics, 
+                    services.bundle, services.audit, services.reporting, services.cloudSync, 
+                    services.briefing),
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             singleViewPlatform.MainView = new MainView
             {
-                 DataContext = new MainViewModel(inventoryService, userService, licenseService, hardwareService, analyticsService, receiptService, languageService, updateService, settingsService),
+                 DataContext = new MainViewModel(
+                    services.inventory, services.user, services.license, services.hardware, 
+                    services.analytics, services.receipt, services.language, services.update, 
+                    services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
+                    services.expiry, services.location, services.returns, services.advancedAnalytics, 
+                    services.bundle, services.audit, services.reporting, services.cloudSync, 
+                    services.briefing),
             };
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    private (InventoryService, UserService, LicenseService, HardwareIdService, AnalyticsService, ReceiptService, LanguageService, UpdateService, SettingsService) InitializeServices()
+    private (
+        InventoryService inventory, UserService user, LicenseService license, HardwareIdService hardware, 
+        AnalyticsService analytics, ReceiptService receipt, LanguageService language, UpdateService update, 
+        SettingsService settings, SupplierService supplier, PurchaseOrderService purchaseOrder, 
+        ForecastingService forecasting, ExpiryService expiry, LocationService location, ReturnsService returns, 
+        AdvancedAnalyticsService advancedAnalytics, BundleService bundle, AuditService audit, 
+        ReportingService reporting, CloudSyncService cloudSync, DailyBriefingService briefing) InitializeServices()
     {
         // Initialize Database
         var dbService = new DatabaseService();
@@ -51,12 +69,25 @@ public partial class App : Application
         var hardwareService = new HardwareIdService();
         var cryptoService = new LicenseCryptoService();
         var licenseService = new LicenseService(dbService, hardwareService, cryptoService);
-        var inventoryService = new InventoryService(dbService, licenseService);
+        var auditService = new AuditService(dbService);
+        var inventoryService = new InventoryService(dbService, licenseService, auditService);
         var analyticsService = new AnalyticsService(dbService);
         var languageService = new LanguageService();
         var updateService = new UpdateService();
         var settingsService = new SettingsService();
         var receiptService = new ReceiptService(settingsService);
+        var supplierService = new SupplierService(dbService);
+        var purchaseOrderService = new PurchaseOrderService(dbService, inventoryService);
+        var forecastingService = new ForecastingService(dbService);
+        var expiryService = new ExpiryService(dbService);
+        
+        var locationService = new LocationService(dbService);
+        var returnsService = new ReturnsService(dbService);
+        var advancedAnalyticsService = new AdvancedAnalyticsService(dbService);
+        var bundleService = new BundleService(dbService);
+        var reportingService = new ReportingService(dbService, settingsService);
+        var cloudSyncService = new CloudSyncService(dbService);
+        var dailyBriefingService = new DailyBriefingService(dbService);
 
         // Initialize services on a background thread to prevent UI thread deadlock
         Task.Run(async () =>
@@ -75,7 +106,12 @@ public partial class App : Application
             }
         }).Wait();
 
-        return (inventoryService, userService, licenseService, hardwareService, analyticsService, receiptService, languageService, updateService, settingsService);
+        return (
+            inventoryService, userService, licenseService, hardwareService, 
+            analyticsService, receiptService, languageService, updateService, 
+            settingsService, supplierService, purchaseOrderService, forecastingService, 
+            expiryService, locationService, returnsService, advancedAnalyticsService, 
+            bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

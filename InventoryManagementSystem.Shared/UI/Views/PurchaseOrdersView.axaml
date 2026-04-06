@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="InventoryManagementSystem.UI.Views.PurchaseOrdersView"
+             x:DataType="vm:PurchaseOrdersViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <TextBlock Grid.Row="0" Text="Purchase Orders" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <DataGrid Grid.Row="1" ItemsSource="{Binding PurchaseOrders}" AutoGenerateColumns="False" SelectedItem="{Binding SelectedPurchaseOrder}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="PO #" Binding="{Binding PurchaseOrder.PONumber}" Width="140"/>
+                <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding PurchaseOrder.Status}" Width="120"/>
+                <DataGridTextColumn Header="Order Date" Binding="{Binding PurchaseOrder.OrderDate}" Width="180"/>
+                <DataGridTextColumn Header="Amount" Binding="{Binding PurchaseOrder.TotalAmount}" Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Create Draft PO" Command="{Binding CreateQuickDraftCommand}" />
+            <Button Content="Approve" Command="{Binding ApprovePurchaseOrderCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
+            <Button Content="Mark Shipped" Command="{Binding MarkAsShippedCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
+            <Button Content="Cancel" Command="{Binding CancelPurchaseOrderCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
+            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

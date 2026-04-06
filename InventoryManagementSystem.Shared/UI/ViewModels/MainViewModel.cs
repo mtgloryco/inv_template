@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InventoryManagementSystem.Services;
 using System.Threading.Tasks;
@@ -16,6 +16,18 @@ public partial class MainViewModel : ViewModelBase
     private readonly ReceiptService _receiptService;
     private readonly UpdateService _updateService;
     private readonly SettingsService _settingsService;
+    private readonly SupplierService _supplierService;
+    private readonly PurchaseOrderService _purchaseOrderService;
+    private readonly ForecastingService _forecastingService;
+    private readonly ExpiryService _expiryService;
+    private readonly LocationService _locationService;
+    private readonly ReturnsService _returnsService;
+    private readonly AdvancedAnalyticsService _advancedAnalyticsService;
+    private readonly BundleService _bundleService;
+    private readonly AuditService _auditService;
+    private readonly ReportingService _reportingService;
+    private readonly CloudSyncService _cloudSyncService;
+    private readonly DailyBriefingService _dailyBriefingService;
 
     // Navigation Stack
     private readonly System.Collections.Generic.Stack<ViewModelBase> _navigationStack = new();
@@ -53,7 +65,28 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _releaseNotesUrl = "";
 
-    public MainViewModel(InventoryService inventoryService, UserService userService, LicenseService licenseService, HardwareIdService hardwareIdService, AnalyticsService analyticsService, ReceiptService receiptService, LanguageService languageService, UpdateService updateService, SettingsService settingsService)
+    public MainViewModel(
+        InventoryService inventoryService,
+        UserService userService,
+        LicenseService licenseService,
+        HardwareIdService hardwareIdService,
+        AnalyticsService analyticsService,
+        ReceiptService receiptService,
+        LanguageService languageService,
+        UpdateService updateService,
+        SettingsService settingsService,
+        SupplierService supplierService,
+        PurchaseOrderService purchaseOrderService,
+        ForecastingService forecastingService,
+        ExpiryService expiryService,
+        LocationService locationService,
+        ReturnsService returnsService,
+        AdvancedAnalyticsService advancedAnalyticsService,
+        BundleService bundleService,
+        AuditService auditService,
+        ReportingService reportingService,
+        CloudSyncService cloudSyncService,
+        DailyBriefingService dailyBriefingService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -64,6 +97,18 @@ public partial class MainViewModel : ViewModelBase
         Language = languageService;
         _updateService = updateService;
         _settingsService = settingsService;
+        _supplierService = supplierService;
+        _purchaseOrderService = purchaseOrderService;
+        _forecastingService = forecastingService;
+        _expiryService = expiryService;
+        _locationService = locationService;
+        _returnsService = returnsService;
+        _advancedAnalyticsService = advancedAnalyticsService;
+        _bundleService = bundleService;
+        _auditService = auditService;
+        _reportingService = reportingService;
+        _cloudSyncService = cloudSyncService;
+        _dailyBriefingService = dailyBriefingService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -104,7 +149,7 @@ public partial class MainViewModel : ViewModelBase
         IsAdmin = UserSession.IsAdmin;
         
         // Start fresh on Dashboard, clearing any login/license history
-        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS);
+        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, GoToInventory, GoToReports, GoToPOS);
         _navigationStack.Clear();
         CanGoBack = false;
         OnPropertyChanged(nameof(SidebarGridLength));
@@ -163,10 +208,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToDashboard()
     {
-        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS));
-        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, GoToInventory, GoToReports, GoToPOS));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, GoToInventory, GoToReports, GoToPOS));
         SidebarGridLength = new Avalonia.Controls.GridLength(250);
-
     }
 
     [RelayCommand]
@@ -221,6 +264,127 @@ public partial class MainViewModel : ViewModelBase
     public void GoToSettings()
     {
         NavigateTo(new SettingsViewModel(_settingsService, Language));
+    }
+
+    [RelayCommand]
+    public void GoToSuppliers()
+    {
+        if (!_licenseService.CanAccessSupplierManagement())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new SuppliersViewModel(_supplierService));
+    }
+
+    [RelayCommand]
+    public void GoToPurchaseOrders()
+    {
+        if (!_licenseService.CanAccessPurchaseOrders())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new PurchaseOrdersViewModel(_purchaseOrderService));
+    }
+
+    [RelayCommand]
+    public void GoToForecasting()
+    {
+        if (!_licenseService.CanAccessForecasting())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new ForecastingViewModel(_forecastingService));
+    }
+
+    [RelayCommand]
+    public void GoToReorderDashboard()
+    {
+        if (!_licenseService.CanAccessForecasting())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new ReorderDashboardViewModel(_forecastingService, _purchaseOrderService));
+    }
+
+    [RelayCommand]
+    public void GoToExpiryDashboard()
+    {
+        if (!_licenseService.CanAccessExpiryTracking())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new ExpiryDashboardViewModel(_expiryService));
+    }
+
+    [RelayCommand]
+    public void GoToLocations()
+    {
+        if (!_licenseService.CanAccessMultiLocation())
+        {
+            GoToLicense();
+            return;
+        }
+        NavigateTo(new LocationsViewModel(_locationService));
+    }
+
+    [RelayCommand]
+    public void GoToStockTransfer()
+    {
+        if (!_licenseService.CanAccessMultiLocation())
+        {
+            GoToLicense();
+            return;
+        }
+        NavigateTo(new StockTransferViewModel(_locationService, _inventoryService));
+    }
+
+    [RelayCommand]
+    public void GoToReturns()
+    {
+        NavigateTo(new ReturnsViewModel(_returnsService, _inventoryService));
+    }
+
+    [RelayCommand]
+    public void GoToAdvancedAnalytics()
+    {
+        if (!_licenseService.CanAccessAdvancedAnalytics())
+        {
+            GoToLicense();
+            return;
+        }
+        NavigateTo(new AdvancedAnalyticsViewModel(_advancedAnalyticsService));
+    }
+
+    [RelayCommand]
+    public void GoToBundles()
+    {
+        if (!_licenseService.CanAccessKitting())
+        {
+            GoToLicense();
+            return;
+        }
+        NavigateTo(new BundleViewModel(_bundleService, _inventoryService));
+    }
+
+    [RelayCommand]
+    public void GoToAuditTrail()
+    {
+        if (!_licenseService.CanAccessAuditTrail())
+        {
+            GoToLicense();
+            return;
+        }
+        NavigateTo(new AuditTrailViewModel(_auditService));
     }
 
     private void OnActivationSuccess()

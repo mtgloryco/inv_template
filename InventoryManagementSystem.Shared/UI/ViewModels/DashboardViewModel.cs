@@ -24,6 +24,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly Action _goToInventory;
         private readonly Action _goToReports;
         private readonly Action _goToPOS;
+        private readonly DailyBriefingService _briefingService;
 
         [ObservableProperty] private int _totalProducts;
         [ObservableProperty] private int _lowStockCount;
@@ -83,12 +84,13 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         private readonly SettingsService _settingsService;
 
-        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, SettingsService settingsService, Action goToInventory, Action goToReports, Action goToPOS)
+        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, SettingsService settingsService, DailyBriefingService briefingService, Action goToInventory, Action goToReports, Action goToPOS)
         {
             _inventoryService = inventoryService;
-            _licenseService = licenseService; // Store for future checks
+            _licenseService = licenseService;
             Language = languageService;
             _settingsService = settingsService;
+            _briefingService = briefingService;
             
             _goToInventory = goToInventory;
             _goToReports = goToReports;
@@ -143,6 +145,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         public bool CanAccessPOS => _licenseService.CanAccessPOS();
 
         [ObservableProperty] private bool _hasMovements;
+        public ObservableCollection<BriefingItem> Briefing { get; } = new();
         
         public bool IsStockOut => AdjType == "OUT";
         public bool IsStockIn => AdjType == "IN";
@@ -180,6 +183,11 @@ namespace InventoryManagementSystem.UI.ViewModels
 
             var products = await _inventoryService.GetAllProductsAsync();
             AllProducts = new ObservableCollection<Product>(products);
+
+            // Load Daily Briefing
+            Briefing.Clear();
+            var briefingItems = await _briefingService.GetDailyBriefingAsync();
+            foreach (var item in briefingItems) Briefing.Add(item);
         }
 
         [RelayCommand]

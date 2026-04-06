@@ -11,11 +11,13 @@ namespace InventoryManagementSystem.Services
     {
         private readonly DatabaseService _databaseService;
         private readonly LicenseService _licenseService;
+        private readonly AuditService _auditService;
 
-        public InventoryService(DatabaseService databaseService, LicenseService licenseService)
+        public InventoryService(DatabaseService databaseService, LicenseService licenseService, AuditService auditService)
         {
             _databaseService = databaseService;
             _licenseService = licenseService;
+            _auditService = auditService;
         }
 
         // Product CRUD
@@ -48,7 +50,10 @@ namespace InventoryManagementSystem.Services
                         QuantityPurchased = product.StockQuantity,
                         QuantityRemaining = product.StockQuantity,
                         CostPerUnit = product.Cost,
-                        PurchaseDate = DateTime.Now
+                        PurchaseDate = DateTime.Now,
+                        BatchNumber = $"BATCH-INIT-{product.Id}-{Guid.NewGuid():N}",
+                        QualityStatus = "Good",
+                        ExpiryDate = null
                     };
                     conn.Insert(batch);
 
@@ -64,6 +69,14 @@ namespace InventoryManagementSystem.Services
                     conn.Insert(movement);
                 }
             });
+
+            await _auditService.LogActionAsync(
+                UserSession.CurrentUser?.Username ?? "System",
+                "CREATE",
+                "Product",
+                product.Id,
+                product
+            );
         }
 
         public async Task AddProductsAsync(IEnumerable<Product> products)
@@ -103,7 +116,10 @@ namespace InventoryManagementSystem.Services
                             QuantityPurchased = product.StockQuantity,
                             QuantityRemaining = product.StockQuantity,
                             CostPerUnit = product.Cost,
-                            PurchaseDate = DateTime.Now
+                            PurchaseDate = DateTime.Now,
+                            BatchNumber = $"BATCH-INIT-{product.Id}-{Guid.NewGuid():N}",
+                            QualityStatus = "Good",
+                            ExpiryDate = null
                         };
                         conn.Insert(batch);
 
@@ -133,7 +149,17 @@ namespace InventoryManagementSystem.Services
         }
 
         // Stock Movement
-        public async Task AddStockMovementAsync(int productId, int quantity, string type, string reason, string user, decimal? customCost = null, decimal? unitPrice = null)
+        public async Task AddStockMovementAsync(
+            int productId,
+            int quantity,
+            string type,
+            string reason,
+            string user,
+            decimal? customCost = null,
+            decimal? unitPrice = null,
+            string? batchNumber = null,
+            DateTime? expiryDate = null,
+            string? qualityStatus = null)
         {
             await _databaseService.Connection.RunInTransactionAsync(conn =>
             {
@@ -176,7 +202,12 @@ namespace InventoryManagementSystem.Services
                         QuantityPurchased = quantity,
                         QuantityRemaining = quantity,
                         CostPerUnit = customCost ?? product.Cost,
-                        PurchaseDate = DateTime.Now
+                        PurchaseDate = DateTime.Now,
+                        BatchNumber = string.IsNullOrWhiteSpace(batchNumber)
+                            ? $"BATCH-{DateTime.Now:yyyyMMddHHmmss}-{Guid.NewGuid():N}"
+                            : batchNumber,
+                        ExpiryDate = expiryDate,
+                        QualityStatus = string.IsNullOrWhiteSpace(qualityStatus) ? "Good" : qualityStatus
                     };
                     conn.Insert(batch);
                 }

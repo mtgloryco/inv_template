@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+             x:Class="InventoryManagementSystem.UI.Views.ForecastingView"
+             x:DataType="vm:ForecastingViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Grid.Row="0">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Forecasting &amp; Demand Forecasting" FontSize="26" FontWeight="SemiBold" />
+                <TextBlock Text="Stockout risk, reorder quantity, and ABC/XYZ classifications." FontSize="13" Foreground="#6B7280" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <Button Grid.Column="1" Content="Refresh" Command="{Binding LoadForecastDataCommand}" IsEnabled="{Binding !IsLoading}" VerticalAlignment="Bottom" Background="#007ACC" Foreground="White" BorderThickness="0" Padding="12,6" />
+        </Grid>
+
+        <Border Grid.Row="1" Margin="0,16,0,0" CornerRadius="10" Background="{DynamicResource ContentBackgroundColor}" Padding="10" BorderBrush="#E5E7EB" BorderThickness="1">
+            <Grid>
+                <TextBlock Text="Analyzing..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="#6B7280"/>
+
+                <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsVisible="{Binding !IsLoading}" SelectionMode="Single" CanUserResizeColumns="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Product" Binding="{Binding Product.Name}" Width="*"/>
+                        <DataGridTextColumn Header="Stock" Binding="{Binding Product.StockQuantity}" Width="90"/>
+                        <DataGridTextColumn Header="Daily Velocity" Binding="{Binding DailyVelocity}" Width="140"/>
+                        <DataGridTextColumn Header="Days to Stockout" Binding="{Binding DaysUntilStockout}" Width="150"/>
+                        <DataGridTextColumn Header="Reorder Qty" Binding="{Binding RecommendedOrderQuantity}" Width="120"/>
+                        <DataGridTextColumn Header="ABC" Binding="{Binding ABCClassification}" Width="70"/>
+                        <DataGridTextColumn Header="XYZ" Binding="{Binding XYZClassification}" Width="70"/>
+                        <DataGridTemplateColumn Header="Risk" Width="140">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Ellipse Width="10" Height="10" Fill="{Binding RiskColorHex}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding StockoutRisk}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="{Binding Rows.Count, StringFormat='Rows: {0}'}" Foreground="#6B7280" FontSize="12" Margin="0,12,0,0"/>
+    </Grid>
+</UserControl>
+

@@ -21,8 +21,18 @@
                 <Button Content="{Binding Language.Resources[Dashboard]}" Command="{Binding GoToDashboardCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[POS]}" Command="{Binding GoToPOSCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Inventory]}" Command="{Binding GoToInventoryCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Suppliers" Command="{Binding GoToSuppliersCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Purchase Orders" Command="{Binding GoToPurchaseOrdersCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Forecasting" Command="{Binding GoToForecastingCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Reorder Dashboard" Command="{Binding GoToReorderDashboardCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Expiry Dashboard" Command="{Binding GoToExpiryDashboardCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Locations" Command="{Binding GoToLocationsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Returns" Command="{Binding GoToReturnsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Bundles &amp; Kits" Command="{Binding GoToBundlesCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Audit Trail" Command="{Binding GoToAuditTrailCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Reports]}" Command="{Binding GoToReportsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Insights]}" Command="{Binding GoToAnalyticsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+                <Button Content="Advanced Insights" Command="{Binding GoToAdvancedAnalyticsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[Users]}" Command="{Binding GoToUsersCommand}" IsVisible="{Binding IsAdmin}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="{Binding Language.Resources[License]}" Command="{Binding GoToLicenseCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                 <Button Content="Settings" Command="{Binding GoToSettingsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>

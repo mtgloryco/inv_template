@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
+             x:Class="InventoryManagementSystem.UI.Views.AuditTrailView"
+             x:DataType="vm:AuditTrailViewModel">
+
+    <Grid RowDefinitions="Auto, *">
+        <Border Grid.Row="0" Background="#607D8B" Padding="20">
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <TextBlock Text="System Audit Trail &amp; Compliance" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                <DatePicker SelectedDate="{Binding StartDate}" Foreground="White"/>
+                <DatePicker SelectedDate="{Binding EndDate}" Foreground="White"/>
+                <Button Content="Filter" Command="{Binding LoadLogsCommand}" Background="Transparent" Foreground="White" BorderBrush="White"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Margin="20" Padding="15" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+            <DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat='G'}" Width="180"/>
+                    <DataGridTextColumn Header="User" Binding="{Binding Username}" Width="120"/>
+                    <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="100"/>
+                    <DataGridTextColumn Header="Table" Binding="{Binding EntityName}" Width="120"/>
+                    <DataGridTextColumn Header="Details" Binding="{Binding ChangesJson}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

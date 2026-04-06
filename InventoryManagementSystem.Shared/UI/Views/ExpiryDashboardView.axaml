@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="800"
+             x:Class="InventoryManagementSystem.UI.Views.ExpiryDashboardView"
+             x:DataType="vm:ExpiryDashboardViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+        <!-- Header -->
+        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Grid.Row="0">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Expiry &amp; Batch Quality" FontSize="26" FontWeight="SemiBold" />
+                <TextBlock Text="Traffic-light alerts for expiring and expired stock." FontSize="13" Foreground="#6B7280" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Content="Refresh"
+                    Command="{Binding LoadCommandCommand}"
+                    IsEnabled="{Binding !IsLoading}"
+                    VerticalAlignment="Bottom"
+                    Background="#007ACC"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Padding="12,6"/>
+        </Grid>
+
+        <!-- Traffic light summary -->
+        <Border Grid.Row="1" CornerRadius="10" Background="{DynamicResource ContentBackgroundColor}" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Status Overview" FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                        <Ellipse Width="12" Height="12" Fill="#FF5252" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding RedCount, StringFormat='Expired: {0}'}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <Ellipse Width="12" Height="12" Fill="#F59E0B" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding OrangeCount, StringFormat='Expiring: {0} (next 30d)'}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                        <Ellipse Width="12" Height="12" Fill="#10B981" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding GreenCount, StringFormat='Healthy: {0}'}" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Batch list -->
+        <Border Grid.Row="2" CornerRadius="10" Background="{DynamicResource ContentBackgroundColor}" Padding="10" BorderBrush="#E5E7EB" BorderThickness="1">
+            <Grid RowDefinitions="Auto,*" RowSpacing="10">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto" Row="0">
+                    <TextBlock Grid.Column="0" Text="Recall Reason" VerticalAlignment="Center" Foreground="#374151" />
+                    <TextBox Grid.Column="1" Text="{Binding RecallReason}" Margin="10,0" />
+                    <TextBlock Grid.Column="2" Text="(Used when recalling a batch)" VerticalAlignment="Center" Foreground="#9CA3AF" FontSize="12"/>
+                </Grid>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding Batches}"
+                          AutoGenerateColumns="False"
+                          SelectionMode="Single"
+                          CanUserResizeColumns="True">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Alert" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="10" Height="10" Fill="{Binding ColorHex}" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Product" Binding="{Binding Product.Name}" Width="*"/>
+                        <DataGridTextColumn Header="Batch" Binding="{Binding Batch.BatchNumber}" Width="180"/>
+                        <DataGridTextColumn Header="Expiry" Binding="{Binding Batch.ExpiryDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="140"/>
+                        <DataGridTextColumn Header="Days" Binding="{Binding DaysRemaining}" Width="80"/>
+                        <DataGridTextColumn Header="Qty Remaining" Binding="{Binding Batch.QuantityRemaining}" Width="130"/>
+                        <DataGridTextColumn Header="Cost Value" Binding="{Binding ValueAtCost, StringFormat='{}{0:N0}'}" Width="140"/>
+
+                        <DataGridTemplateColumn Header="Recall" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Recall"
+                                            Command="{Binding DataContext.RecallBatchAsyncCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding CanRecall}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock Grid.Row="1"
+                           Text="No expiring/expired batches found."
+                           IsVisible="{Binding IsBatchesEmpty}"
+                           HorizontalAlignment="Center"
+                           Margin="0,40,0,0"
+                           Foreground="#9CA3AF"/>
+            </Grid>
+        </Border>
+
+        <!-- Waste report -->
+        <Border Grid.Row="3" CornerRadius="10" Background="{DynamicResource ContentBackgroundColor}" Padding="12" BorderBrush="#E5E7EB" BorderThickness="1">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,Auto" ColumnSpacing="12" RowSpacing="10">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Waste From" FontSize="12" Foreground="#6B7280"/>
+                    <DatePicker SelectedDate="{Binding WasteFrom}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Waste To" FontSize="12" Foreground="#6B7280"/>
+                    <DatePicker SelectedDate="{Binding WasteTo}"/>
+                </StackPanel>
+                <Button Grid.Column="2"
+                        Content="Generate Waste Report"
+                        Command="{Binding LoadWasteReportCommandCommand}"
+                        Background="#111827"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Padding="12,8"
+                        VerticalAlignment="Bottom"/>
+
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Spacing="6">
+                    <TextBlock Text="{Binding WasteTotalCost, StringFormat='Total waste cost: {0:N0}'}" FontWeight="SemiBold"/>
+                    <ItemsControl ItemsSource="{Binding WasteRows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="6,4">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding ProductName}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding BatchNumber}" FontSize="12" Foreground="#6B7280"/>
+                                        <TextBlock Text="{Binding Reason}" FontSize="12" Foreground="#374151"/>
+                                        <TextBlock Text="{Binding TotalCost, StringFormat='{}{0:N0} cost'}" FontSize="12" Foreground="#DC2626"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="No waste records in the selected period."
+                               IsVisible="{Binding IsWasteRowsEmpty}"
+                               Foreground="#6B7280"
+                               HorizontalAlignment="Center"
+                               Margin="0,12,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+

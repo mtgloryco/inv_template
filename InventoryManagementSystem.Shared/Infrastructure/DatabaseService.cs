@@ -46,6 +46,17 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<SaleBatchUsage>();
             await _connection.CreateTableAsync<User>();
             await _connection.CreateTableAsync<LocalLicense>();
+            await _connection.CreateTableAsync<Supplier>();
+            await _connection.CreateTableAsync<PurchaseOrder>();
+            await _connection.CreateTableAsync<PurchaseOrderItem>();
+            await _connection.CreateTableAsync<ReorderRule>();
+            await _connection.CreateTableAsync<Location>();
+            await _connection.CreateTableAsync<LocationStock>();
+            await _connection.CreateTableAsync<StockTransfer>();
+            await _connection.CreateTableAsync<CustomerReturn>();
+            await _connection.CreateTableAsync<SupplierReturn>();
+            await _connection.CreateTableAsync<ProductBundle>();
+            await _connection.CreateTableAsync<AuditLog>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();

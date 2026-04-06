@@ -50,6 +50,9 @@ namespace InventoryManagementSystem.Domain
         public decimal CostPerUnit { get; set; }
         public DateTime PurchaseDate { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? ExpiryDate { get; set; }
+        public string BatchNumber { get; set; } = string.Empty;
+        public string QualityStatus { get; set; } = "Good";
     }
 
     public class SaleBatchUsage
@@ -83,5 +86,175 @@ namespace InventoryManagementSystem.Domain
         public DateTime LastKnownValidDate { get; set; } // To detect clock manipulation
         public string Status { get; set; } = "Free"; // Free, Active, Expired, HardwareMismatch, InvalidSignature
         public string Type { get; set; } = "Free"; // Free, Premium
+    }
+
+    public class Supplier
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string ContactPerson { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public int DefaultLeadTimeDays { get; set; }
+        public string PaymentTerms { get; set; } = string.Empty;
+        public decimal Rating { get; set; } = 3m;
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class PurchaseOrder
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string PONumber { get; set; } = string.Empty;
+        public int SupplierId { get; set; }
+        public string Status { get; set; } = "Draft";
+        public DateTime OrderDate { get; set; } = DateTime.Now;
+        public DateTime? ExpectedDeliveryDate { get; set; }
+        public DateTime? ActualDeliveryDate { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public string CreatedByUsername { get; set; } = string.Empty;
+        public string ApprovedByUsername { get; set; } = string.Empty;
+        public decimal TotalAmount { get; set; }
+    }
+
+    public class PurchaseOrderItem
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int PurchaseOrderId { get; set; }
+        public int ProductId { get; set; }
+        public int QuantityOrdered { get; set; }
+        public int QuantityReceived { get; set; }
+        public decimal UnitCost { get; set; }
+        public decimal TotalCost => QuantityOrdered * UnitCost;
+    }
+
+    public class PurchaseOrderListItem
+    {
+        public PurchaseOrder PurchaseOrder { get; set; } = new();
+        public string SupplierName { get; set; } = string.Empty;
+    }
+
+    public class SupplierPerformance
+    {
+        public int SupplierId { get; set; }
+        public int TotalOrders { get; set; }
+        public decimal OnTimeDeliveryPercent { get; set; }
+        public double AverageLeadTimeDays { get; set; }
+    }
+
+    public class ReorderRule
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+
+        public int ProductId { get; set; }
+        public int PreferredSupplierId { get; set; }
+
+        public int ReorderPoint { get; set; }
+        public int ReorderQuantity { get; set; }
+        public int LeadTimeDays { get; set; }
+        public int SafetyStockDays { get; set; }
+        public bool AutoCreatePO { get; set; } = false;
+    }
+
+    // --- PHASE 2: MULTI-LOCATION ---
+
+    public class Location
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = "Warehouse"; // Warehouse, Store, Vehicle, External
+        public string Address { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class LocationStock
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int LocationId { get; set; }
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public int ReorderPoint { get; set; }
+    }
+
+    public class StockTransfer
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int FromLocationId { get; set; }
+        public int ToLocationId { get; set; }
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public string Status { get; set; } = "Pending"; // Pending, InTransit, Completed, Cancelled
+        public DateTime RequestedDate { get; set; } = DateTime.Now;
+        public DateTime? CompletedDate { get; set; }
+        public string RequestedByUsername { get; set; } = string.Empty;
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    // --- PHASE 5: RETURNS & REFUNDS ---
+    // (Adding these since they weren't found despite user's claim)
+
+    public class CustomerReturn
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string ReturnNumber { get; set; } = string.Empty;
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public string Condition { get; set; } = "Resaleable"; // Resaleable, Damaged, Destroyed
+        public decimal RefundAmount { get; set; }
+        public string ProcessedByUsername { get; set; } = string.Empty;
+        public DateTime ReturnDate { get; set; } = DateTime.Now;
+        public string OriginalReceiptId { get; set; } = string.Empty;
+        public string Resolution { get; set; } = "Restocked"; // Restocked, Returned to Supplier, Written Off
+    }
+
+    public class SupplierReturn
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string ReturnNumber { get; set; } = string.Empty;
+        public int SupplierId { get; set; }
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending"; // Pending, Shipped, Credited
+        public decimal CreditAmount { get; set; }
+        public DateTime ReturnDate { get; set; } = DateTime.Now;
+    }
+
+    // --- PHASE 7: KITTING & BUNDLES ---
+
+    public class ProductBundle
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int ParentProductId { get; set; }       // The bundle SKU
+        public int ComponentProductId { get; set; }    // A component inside the bundle
+        public int QuantityRequired { get; set; }      // How many of this component per bundle
+    }
+
+    // --- PHASE 8: AUDIT TRAIL ---
+
+    public class AuditLog
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string EntityType { get; set; } = string.Empty; // "Product", "User", "PurchaseOrder", etc.
+        public int EntityId { get; set; }
+        public string Action { get; set; } = string.Empty;     // Created, Updated, Deleted, Approved, etc.
+        public string ChangedByUsername { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public string OldValues { get; set; } = string.Empty;  // JSON snapshot of before
+        public string NewValues { get; set; } = string.Empty;  // JSON snapshot of after
+        public string IpAddress { get; set; } = string.Empty;
     }
 }

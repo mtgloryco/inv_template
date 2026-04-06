@@ -23,6 +23,34 @@
                     <Button Grid.Column="1" Command="{Binding LoadDashboardDataCommand}" Content="Refresh" Background="Transparent" Foreground="#007ACC" BorderThickness="0"/>
                 </Grid>
 
+                <!-- Daily Briefing (Phase 11.1) -->
+                <StackPanel Spacing="10" IsVisible="{Binding Briefing.Count}">
+                    <TextBlock Text="Morning Briefing" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}"/>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Briefing}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="15"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="280" Padding="15" CornerRadius="12" BoxShadow="0 4 12 0 #08000000" Background="{DynamicResource ContentBackgroundColor}">
+                                        <Grid ColumnDefinitions="Auto, *">
+                                            <TextBlock Text="{Binding Icon}" FontSize="24" VerticalAlignment="Top" Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="1" Spacing="8">
+                                                <TextBlock Text="{Binding Priority}" FontSize="10" FontWeight="Bold" Foreground="#888" TextAlignment="Right"/>
+                                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryColor}"/>
+                                                <Button Content="{Binding ActionLabel}" Height="30" FontSize="11" Padding="15,0" HorizontalAlignment="Left" Background="#f0f0f0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
                 <!-- Low Stock Alert -->
                 <Border Background="#FFEBEE" BorderBrush="#FF5252" BorderThickness="1" CornerRadius="8" Padding="15" IsVisible="{Binding LowStockCount}">
                     <Grid ColumnDefinitions="Auto, *">

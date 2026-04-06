@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
+             x:Class="InventoryManagementSystem.UI.Views.BundleView"
+             x:DataType="vm:BundleViewModel">
+
+    <Grid RowDefinitions="Auto, *">
+        <Border Grid.Row="0" Background="#FF9800" Padding="20">
+            <TextBlock Text="Product Kitting &amp; Bundling" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*, 400" Margin="20">
+            <!-- Bundle Details -->
+            <Border Grid.Column="0" Margin="10" Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                <StackPanel Spacing="20">
+                    <TextBlock Text="Select a Bundle Product" FontSize="18" FontWeight="SemiBold"/>
+                    <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedBundle}" HorizontalAlignment="Stretch">
+                         <ComboBox.ItemTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBlock Text="Bundle Components" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                    <DataGrid ItemsSource="{Binding CurrentComponents}" AutoGenerateColumns="False" IsReadOnly="True" Height="400">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Component ID" Binding="{Binding ComponentProductId}" Width="120"/>
+                            <DataGridTextColumn Header="Qty Required" Binding="{Binding QuantityPerBundle}" Width="120"/>
+                            <DataGridTextColumn Header="Description" Binding="{Binding Notes}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Assembly Controls -->
+            <StackPanel Grid.Column="1" Margin="10" Spacing="20">
+                <Border Padding="25" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" BoxShadow="0 8 20 0 #10000000">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="Production Actions" FontSize="18" FontWeight="SemiBold"/>
+                        
+                        <Border Background="#E3F2FD" Padding="15" CornerRadius="8">
+                             <StackPanel>
+                                <TextBlock Text="Available to Assemble" FontSize="12" Foreground="#0D47A1"/>
+                                <TextBlock Text="{Binding AvailableToAssemble}" FontSize="32" FontWeight="Bold" Foreground="#0D47A1"/>
+                             </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Master Project Quantity" FontSize="12" Foreground="Gray"/>
+                        <NumericUpDown Value="{Binding AssembleQuantity}" Minimum="1" HorizontalAlignment="Stretch"/>
+
+                        <Grid ColumnDefinitions="*, 15, *">
+                            <Button Grid.Column="0" Content="Kitting (Assembly)" Command="{Binding AssembleCommand}" HorizontalAlignment="Stretch" Padding="15" Background="#4CAF50" Foreground="White"/>
+                            <Button Grid.Column="2" Content="Disassemble" Command="{Binding DisassembleCommand}" HorizontalAlignment="Stretch" Padding="15" Background="#FF5252" Foreground="White"/>
+                        </Grid>
+                        
+                        <TextBlock Text="Assembly deducts raw components and increases bundle stock. Disassembly does the opposite." FontSize="11" Foreground="Gray" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

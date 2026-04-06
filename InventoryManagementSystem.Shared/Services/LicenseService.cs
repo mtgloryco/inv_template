@@ -236,6 +236,25 @@ namespace InventoryManagementSystem.Services
             return IsEnterprise;
         }
 
+        public bool CanAccessSupplierManagement() => IsMedium || IsPro || IsEnterprise;
+        public bool CanAccessPurchaseOrders() => IsMedium || IsPro || IsEnterprise;
+        public bool CanAccessMultiLocation() => IsMedium || IsPro || IsEnterprise;
+        public bool CanAccessExpiryTracking() => IsMedium || IsPro || IsEnterprise;
+        public bool CanAccessForecasting() => IsPro || IsEnterprise;
+        public bool CanAccessAdvancedAnalytics() => IsPro || IsEnterprise;
+        public bool CanAccessKitting() => IsPro || IsEnterprise;
+        public bool CanAccessAuditTrail() => IsPro || IsEnterprise;
+        public bool CanAccessCloudSync() => IsEnterprise;
+        public bool CanAccessAutoReorder() => IsEnterprise;
+
+        public int GetMaxLocationCount()
+        {
+            if (IsBasic) return 1;
+            if (IsMedium) return 3;
+            if (IsPro || IsEnterprise) return int.MaxValue;
+            return 0;
+        }
+
         [Obsolete("Use specific permission methods instead.")]
         public bool IsFeatureAllowed(string featureName)
         {
