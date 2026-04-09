@@ -12,48 +12,65 @@ We created a clean endpoint specifically for external consumption:
 
 **Response Example:**
 ```json
-{
-    "version": "1.2.1",
-    "downloadLink": "https://example.com/download/v1.2.1.exe",
-    "os": "Windows",
-    "releaseDate": "2026-04-09T18:00:00Z",
-    "description": "Latest stable release with security patches."
-}
+[
+    {
+        "version": "1.2.1",
+        "downloadLink": "https://example.com/download/v1.2.1.exe",
+        "os": "Windows",
+        "type": "Installer",
+        "releaseDate": "2026-04-09T18:00:00Z",
+        "description": "Latest stable release for Windows."
+    },
+    {
+        "version": "1.2.1",
+        "downloadLink": "https://example.com/download/v1.2.1.tar.gz",
+        "os": "Linux",
+        "type": "Archive",
+        "releaseDate": "2026-04-09T18:00:00Z",
+        "description": "Latest stable release for Linux."
+    }
+]
 ```
 
 ## 3. How to use in another App (Javascript/React)
 
-You can use the following code in any other application to fetch the latest version:
+You can use the following code in any other application to fetch the versions:
 
 ```javascript
-async function getLatestVersion() {
+async function getFeaturedVersions() {
     try {
         const response = await fetch('https://your-domain.com/api/public/version');
         
         if (!response.ok) {
-            throw new Error('Failed to fetch version info');
+            throw new Error('Failed to fetch versions');
         }
 
-        const data = await response.json();
+        const versions = await response.json(); // This is now an Array
         
-        console.log('Latest Version:', data.version);
-        console.log('Download Link:', data.downloadLink);
+        versions.forEach(v => {
+            console.log(`${v.os} Version:`, v.version);
+            console.log(`Download:`, v.downloadLink);
+        });
         
-        return data;
+        return versions;
     } catch (error) {
         console.error('Error fetching version:', error);
     }
 }
 
-// Example usage
-getLatestVersion().then(data => {
-    if (data) {
-        // Update your UI with the version and download button
-        const versionEl = document.getElementById('version-display');
-        const downloadBtn = document.getElementById('download-btn');
-        
-        if (versionEl) versionEl.innerText = `v${data.version}`;
-        if (downloadBtn) downloadBtn.href = data.downloadLink;
+// Example usage: Displaying a list of downloads
+getFeaturedVersions().then(versions => {
+    if (versions) {
+        const listContainer = document.getElementById('download-list');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = versions.map(v => `
+            <div class="download-item">
+                <h3>${v.os} (v${v.version})</h3>
+                <p>${v.description}</p>
+                <a href="${v.downloadLink}" class="btn">Download for ${v.os}</a>
+            </div>
+        `).join('');
     }
 });
 ```
