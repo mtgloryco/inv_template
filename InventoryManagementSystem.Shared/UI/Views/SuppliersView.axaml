@@ -6,44 +6,146 @@
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
              x:Class="InventoryManagementSystem.UI.Views.SuppliersView"
              x:DataType="vm:SuppliersViewModel">
-    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="2*,*" Margin="20">
-        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Supplier Management" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
+    <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="2*,*" Margin="20">
+        <!-- Header Panel with Add button -->
+        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="*, Auto" Margin="0,0,0,16">
+            <TextBlock Grid.Column="0" Text="Supplier Management" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="+ Add Supplier" Command="{Binding ShowAddSupplierFormCommand}" Background="#007ACC" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4" />
+        </Grid>
 
-        <DataGrid Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" AutoGenerateColumns="False" Margin="0,0,12,0">
+        <!-- Search Bar -->
+        <TextBox Grid.Row="1" Grid.Column="0" Watermark="Search suppliers by name, contact, phone, email, TIN..." Text="{Binding SearchText}" Margin="0,0,12,12" VerticalAlignment="Center" />
+
+        <DataGrid Grid.Row="2" Grid.Column="0" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" AutoGenerateColumns="False" Margin="0,0,12,0">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Type" Binding="{Binding SupplierType}" Width="100" />
                 <DataGridTextColumn Header="Contact" Binding="{Binding ContactPerson}" Width="*" />
-                <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="*" />
-                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="90" />
+                <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="120" />
+                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="70" />
+                <DataGridTemplateColumn Header="Actions" Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).EditSupplierCommand}" CommandParameter="{Binding}" Background="#007ACC" Foreground="White" FontSize="10" Padding="8,4"/>
+                                <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).ConfirmDeleteSupplierCommand}" CommandParameter="{Binding}" Background="#D32F2F" Foreground="White" FontSize="10" Padding="8,4"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 
-        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="8">
-            <TextBlock Text="Add / Edit Supplier" FontWeight="SemiBold" />
-            <TextBox Watermark="Name" Text="{Binding CurrentSupplier.Name}" />
-            <TextBox Watermark="Contact Person" Text="{Binding CurrentSupplier.ContactPerson}" />
-            <TextBox Watermark="Phone" Text="{Binding CurrentSupplier.Phone}" />
-            <TextBox Watermark="Email" Text="{Binding CurrentSupplier.Email}" />
-            <TextBox Watermark="Address" Text="{Binding CurrentSupplier.Address}" />
-            <TextBox Watermark="Payment Terms (Net 30)" Text="{Binding CurrentSupplier.PaymentTerms}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Save" Command="{Binding SaveSupplierCommand}" />
-                <Button Content="Reload" Command="{Binding LoadSuppliersCommand}" />
-            </StackPanel>
+        <ScrollViewer Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="10" Margin="0,0,8,0">
+                <!-- Add / Edit Supplier Form (Collapsible) -->
+                <Border BorderBrush="#DDD" BorderThickness="1" Padding="12" CornerRadius="6" IsVisible="{Binding IsFormVisible}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Add / Edit Supplier" FontWeight="SemiBold" FontSize="16" />
+                        <TextBox Watermark="Name" Text="{Binding CurrentSupplier.Name}" />
+                        
+                        <TextBlock Text="Supplier Type" FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                        <ComboBox ItemsSource="{Binding SupplierTypes}" SelectedItem="{Binding CurrentSupplier.SupplierType}" HorizontalAlignment="Stretch" />
+                        
+                        <TextBox Watermark="TIN Number" Text="{Binding CurrentSupplier.TinNumber}" />
+                        <TextBox Watermark="Contact Person" Text="{Binding CurrentSupplier.ContactPerson}" />
+                        <TextBox Watermark="Phone" Text="{Binding CurrentSupplier.Phone}" />
+                        <TextBox Watermark="Email" Text="{Binding CurrentSupplier.Email}" />
+                        <TextBox Watermark="Address" Text="{Binding CurrentSupplier.Address}" />
+                        
+                        <TextBlock Text="Payment Terms" FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                        <ComboBox ItemsSource="{Binding PaymentTermsOptions}" SelectedItem="{Binding CurrentSupplier.PaymentTerms}" HorizontalAlignment="Stretch" />
 
-            <Border BorderBrush="#DDD" BorderThickness="1" Padding="8" Margin="0,12,0,0">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Supplier Performance" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding SelectedSupplierPerformance.TotalOrders, StringFormat='Orders: {0}'}" />
-                    <TextBlock Text="{Binding SelectedSupplierPerformance.OnTimeDeliveryPercent, StringFormat='On-time: {0:F1}%'}" />
-                    <TextBlock Text="{Binding SelectedSupplierPerformance.AverageLeadTimeDays, StringFormat='Avg lead time: {0:F1} days'}" />
+                        <TextBox Watermark="Website Link (e.g. www.supplier.com)" Text="{Binding CurrentSupplier.WebsiteUrl}" />
+                        
+                        <TextBlock Text="Supplier Logo" FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                        <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto" Margin="0,4,0,4">
+                            <Border Grid.Column="0" Width="60" Height="60" CornerRadius="30" ClipToBounds="True" Background="#F0F0F0" BorderBrush="#DDD" BorderThickness="1" Margin="0,0,8,0">
+                                <Image Source="{Binding CurrentLogoBitmap}" Stretch="UniformToFill" Width="60" Height="60" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                <Button Content="Choose Logo..." Command="{Binding UploadLogoCommand}" FontSize="11" Padding="8,4" />
+                                <Button Content="Remove" Command="{Binding RemoveLogoCommand}" FontSize="11" Padding="8,4" Background="#E57373" Foreground="White" IsVisible="{Binding CurrentLogoBitmap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <Button Content="Save" Command="{Binding SaveSupplierCommand}" Background="#2E7D32" Foreground="White"/>
+                            <Button Content="Cancel" Command="{Binding CloseFormCommand}" />
+                            <Button Content="Reload" Command="{Binding LoadSuppliersCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border BorderBrush="#DDD" BorderThickness="1" Padding="12" CornerRadius="6" Margin="0,12,0,0">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Supplier Details &amp; Performance" FontWeight="SemiBold" FontSize="14" />
+
+                        <!-- Selected Supplier Logo & Visit Website -->
+                        <Grid ColumnDefinitions="Auto, *" Margin="0,0,0,8" IsVisible="{Binding SelectedSupplier, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Border Grid.Column="0" Width="50" Height="50" CornerRadius="25" ClipToBounds="True" Background="#F0F0F0" BorderBrush="#DDD" BorderThickness="1" Margin="0,0,8,0" IsVisible="{Binding SelectedSupplierLogoBitmap, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Image Source="{Binding SelectedSupplierLogoBitmap}" Stretch="UniformToFill" Width="50" Height="50" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedSupplier.Name}" FontWeight="Bold" FontSize="15" />
+                                <Button Content="Visit Website" Command="{Binding OpenWebsiteCommand}" FontSize="10" Padding="6,2" Margin="0,4,0,0" IsVisible="{Binding HasWebsite}" Background="#007ACC" Foreground="White" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="{Binding SelectedSupplierPerformance.TotalOrders, StringFormat='Orders: {0}'}" />
+                        <TextBlock Text="{Binding SelectedSupplierPerformance.OnTimeDeliveryPercent, StringFormat='On-time: {0:F1}%'}" />
+                        <TextBlock Text="{Binding SelectedSupplierPerformance.AverageLeadTimeDays, StringFormat='Avg lead time: {0:F1} days'}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Linked Products Section -->
+                <Border BorderBrush="#DDD" BorderThickness="1" Padding="12" CornerRadius="6" Margin="0,8,0,0" IsVisible="{Binding SelectedSupplier, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Delivered Products" FontWeight="SemiBold" FontSize="14" />
+                        
+                        <!-- Link a new product -->
+                        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto" Margin="0,4,0,4">
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Link Product" FontSize="11" Foreground="Gray" />
+                            <ComboBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProductToLink}" HorizontalAlignment="Stretch" PlaceholderText="Select product...">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Row="1" Grid.Column="1" Content="Add" Command="{Binding LinkProductCommand}" Margin="4,0,0,0" VerticalAlignment="Stretch" Background="#007ACC" Foreground="White" />
+                        </Grid>
+
+                        <!-- List of linked products -->
+                        <ListBox ItemsSource="{Binding SupplierProducts}" Height="150" Background="Transparent" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto" VerticalAlignment="Center" Margin="0,2">
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        <Button Grid.Column="1" Content="Remove" Command="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).UnlinkProductCommand}" CommandParameter="{Binding}" Background="#D32F2F" Foreground="White" FontSize="10" Padding="6,2" Margin="4,0,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Deletion Confirmation Dialog Overlay -->
+        <Grid Grid.RowSpan="3" Grid.ColumnSpan="2" Background="#80000000" IsVisible="{Binding IsDeleteConfirmationOpen}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="White" CornerRadius="8" Padding="20" HorizontalAlignment="Center" VerticalAlignment="Center" Width="320" BoxShadow="0 10 30 0 #40000000">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Confirm Deletion" FontSize="18" FontWeight="Bold" Foreground="#D32F2F" />
+                    <TextBlock Text="{Binding SupplierToDelete.Name, StringFormat='Are you sure you want to delete supplier \'{0}\'?'}" TextWrapping="Wrap" FontSize="14" />
+                    <TextBlock Text="This action cannot be undone." FontSize="12" Foreground="Gray" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" Padding="10,5" />
+                        <Button Content="Delete" Command="{Binding ExecuteDeleteCommand}" Background="#D32F2F" Foreground="White" Padding="10,5" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
-        </StackPanel>
-
-        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-            <Button Content="Edit Selected" Command="{Binding EditSupplierCommand}" CommandParameter="{Binding SelectedSupplier}" IsEnabled="{Binding SelectedSupplier, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Content="Delete Selected" Command="{Binding DeleteSupplierCommand}" CommandParameter="{Binding SelectedSupplier}" IsEnabled="{Binding SelectedSupplier, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>
+

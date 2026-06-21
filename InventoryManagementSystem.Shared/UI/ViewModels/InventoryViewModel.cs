@@ -70,14 +70,22 @@ namespace InventoryManagementSystem.UI.ViewModels
         public LanguageService Language { get; }
 
         private readonly SettingsService _settingsService;
+        private readonly Action? _goToPurchaseOrders;
 
-        public InventoryViewModel(InventoryService inventoryService, LicenseService licenseService, SettingsService settingsService, LanguageService languageService)
+        public InventoryViewModel(InventoryService inventoryService, LicenseService licenseService, SettingsService settingsService, LanguageService languageService, Action? goToPurchaseOrders = null)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
             _settingsService = settingsService;
             Language = languageService;
+            _goToPurchaseOrders = goToPurchaseOrders;
             LoadProductsCommand.Execute(null);
+        }
+
+        [RelayCommand]
+        private void GoToPurchaseOrders()
+        {
+            _goToPurchaseOrders?.Invoke();
         }
 
         [RelayCommand]

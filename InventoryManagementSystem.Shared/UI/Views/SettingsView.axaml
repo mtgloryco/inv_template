@@ -3,53 +3,195 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
              x:Class="InventoryManagementSystem.UI.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
              Background="{DynamicResource PageBackgroundColor}">
 
-    <Grid RowDefinitions="Auto, *" Margin="40">
+    <UserControl.Styles>
+        <!-- Premium Tab Navigation Button Styling -->
+        <Style Selector="Button.tab-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.tab-btn:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryColor}"/>
+            <Setter Property="Background" Value="#10000000"/>
+        </Style>
+        <Style Selector="Button.active-tab">
+            <Setter Property="Foreground" Value="#007ACC"/>
+            <Setter Property="BorderBrush" Value="#007ACC"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, Auto, *" Margin="30">
         <!-- Header -->
         <TextBlock Text="{Binding Language.Resources[Settings_Title]}" FontSize="28" FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextPrimaryColor}" Margin="0,0,0,30" />
+                   Foreground="{DynamicResource TextPrimaryColor}" Margin="0,0,0,20" />
 
-        <Border Grid.Row="1" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" Padding="40">
-            <ScrollViewer>
-                <StackPanel Spacing="20" MaxWidth="600" HorizontalAlignment="Left">
-                    
-                    <StackPanel Spacing="5">
-                         <TextBlock Text="{Binding Language.Resources[Settings_StoreInfo]}" FontSize="20" FontWeight="Bold"/>
-                         <TextBlock Text="{Binding Language.Resources[Settings_StoreInfoDesc]}" Foreground="Gray" Margin="0,0,0,10"/>
-                    </StackPanel>
+        <!-- Inline Tab Bar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="5" Margin="0,0,0,20">
+            <Button Content="General Settings" Command="{Binding SelectTabCommand}" CommandParameter="General"
+                    Classes="tab-btn" Classes.active-tab="{Binding IsGeneralTabActive}" />
+            <Button Content="Taxes Setup" Command="{Binding SelectTabCommand}" CommandParameter="Taxes"
+                    Classes="tab-btn" Classes.active-tab="{Binding IsTaxesTabActive}" />
+        </StackPanel>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="{Binding Language.Resources[Settings_StoreName]}" FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding StoreName}" Watermark="{Binding Language.Resources[Settings_StoreName]}"/>
-                    </StackPanel>
+        <!-- Content Area -->
+        <Border Grid.Row="2" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" Padding="30" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <Panel>
+                    <!-- TAB 1: GENERAL SETTINGS -->
+                    <StackPanel Spacing="20" MaxWidth="600" HorizontalAlignment="Left" IsVisible="{Binding IsGeneralTabActive}">
+                        <StackPanel Spacing="5">
+                             <TextBlock Text="{Binding Language.Resources[Settings_StoreInfo]}" FontSize="20" FontWeight="Bold"/>
+                             <TextBlock Text="{Binding Language.Resources[Settings_StoreInfoDesc]}" Foreground="Gray" Margin="0,0,0,10"/>
+                        </StackPanel>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="{Binding Language.Resources[Settings_Address]}" FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding StoreAddress}" Watermark="{Binding Language.Resources[Settings_Address]}" Height="80" AcceptsReturn="True"/>
-                    </StackPanel>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding Language.Resources[Settings_StoreName]}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding StoreName}" Watermark="{Binding Language.Resources[Settings_StoreName]}"/>
+                        </StackPanel>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="{Binding Language.Resources[Settings_Currency]}" FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding CurrencySymbol}" Watermark="e.g. RWF, $, €" Width="150" HorizontalAlignment="Left"/>
-                    </StackPanel>
-                    
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="{Binding Language.Resources[Settings_Printer]}" FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding PrinterName}" Watermark="{Binding Language.Resources[Settings_Printer]}"/>
-                    </StackPanel>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding Language.Resources[Settings_Address]}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding StoreAddress}" Watermark="{Binding Language.Resources[Settings_Address]}" Height="80" AcceptsReturn="True"/>
+                        </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,20,0,0">
-                        <Button Content="{Binding Language.Resources[Settings_Save]}" Command="{Binding SaveSettingsCommand}"
-                                Classes="accent" Padding="20,10" FontWeight="SemiBold"/>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding Language.Resources[Settings_Currency]}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding CurrencySymbol}" Watermark="e.g. RWF, $, €" Width="150" HorizontalAlignment="Left"/>
+                        </StackPanel>
                         
-                        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#4CAF50" FontWeight="Medium"/>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding Language.Resources[Settings_Printer]}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding PrinterName}" Watermark="{Binding Language.Resources[Settings_Printer]}"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,20,0,0">
+                            <Button Content="{Binding Language.Resources[Settings_Save]}" Command="{Binding SaveSettingsCommand}"
+                                    Classes="accent" Background="#2E7D32" Foreground="White" Padding="20,10" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#4CAF50" FontWeight="Medium"/>
+                        </StackPanel>
                     </StackPanel>
 
-                </StackPanel>
+                    <!-- TAB 2: TAXES SETUP -->
+                    <Grid RowDefinitions="Auto, Auto, *" IsVisible="{Binding IsTaxesTabActive}">
+                        <!-- Top actions -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Manage Taxes" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="Set up product tax rules for purchases and sales." Foreground="Gray"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="+ Create Tax" Command="{Binding OpenAddTaxFormCommand}" Background="#007ACC" Foreground="White" Padding="15,8" FontWeight="SemiBold" CornerRadius="6" IsVisible="{Binding !IsTaxFormVisible}" />
+                        </Grid>
+
+                        <!-- Add/Edit Tax Form (2-column layout) -->
+                        <Border Grid.Row="1" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="20" CornerRadius="8" Margin="0,0,0,25" IsVisible="{Binding IsTaxFormVisible}">
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="Add / Edit Tax Rule" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
+
+                                <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto" Margin="0" HorizontalAlignment="Stretch">
+                                    <!-- Column 1 -->
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                        <TextBlock Text="Tax Name *" FontWeight="Medium" FontSize="12" />
+                                        <TextBox Text="{Binding TaxName}" Watermark="e.g. VAT 18%" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                        <TextBlock Text="Tax Computation" FontWeight="Medium" FontSize="12" />
+                                        <ComboBox ItemsSource="{Binding ComputationOptions}" SelectedItem="{Binding TaxComputation}" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                        <TextBlock Text="Amount" FontWeight="Medium" FontSize="12" />
+                                        <TextBox Text="{Binding TaxAmount}" Watermark="e.g. 18 for percentage, 500 for fixed" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,15,0" Spacing="5">
+                                        <TextBlock Text="Tax Type" FontWeight="Medium" FontSize="12" />
+                                        <ComboBox ItemsSource="{Binding TaxTypeOptions}" SelectedItem="{Binding TaxType}" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+
+                                    <!-- Column 2 -->
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                        <TextBlock Text="Label on Invoices" FontWeight="Medium" FontSize="12" />
+                                        <TextBox Text="{Binding TaxLabelOnInvoice}" Watermark="e.g. VAT (defaults to Name)" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                        <TextBlock Text="Tax Scope" FontWeight="Medium" FontSize="12" />
+                                        <ComboBox ItemsSource="{Binding ScopeOptions}" SelectedItem="{Binding TaxScope}" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                        <TextBlock Text="Included in Price" FontWeight="Medium" FontSize="12" />
+                                        <ComboBox ItemsSource="{Binding IncludedInPriceOptions}" SelectedItem="{Binding IncludedInPrice}" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="15,0,0,0" Spacing="5">
+                                        <TextBlock Text="Description" FontWeight="Medium" FontSize="12" />
+                                        <TextBox Text="{Binding TaxDescription}" Watermark="Optional description..." />
+                                    </StackPanel>
+
+                                    <!-- Status Toggle Row -->
+                                    <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,12,15,0" Spacing="10" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Status" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
+                                        <ToggleSwitch IsChecked="{Binding TaxIsActive}" OnContent="Active" OffContent="Inactive" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="{Binding TaxErrorMessage}" Foreground="#D32F2F" FontSize="12" Margin="0,5,0,0" IsVisible="{Binding TaxErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                    <Button Content="Cancel" Command="{Binding CloseTaxFormCommand}" Padding="15,8" />
+                                    <Button Content="Save Tax Rule" Command="{Binding SaveTaxCommand}" Background="#2E7D32" Foreground="White" Padding="15,8" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Taxes Table -->
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding Taxes}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" MinHeight="250">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="Label on Invoice" Binding="{Binding LabelOnInvoice}" Width="*" />
+                                <DataGridTextColumn Header="Computation" Binding="{Binding Computation}" Width="110" />
+                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="100" />
+                                <DataGridTextColumn Header="Type" Binding="{Binding TaxType}" Width="100" />
+                                <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" Width="100" />
+                                <DataGridTextColumn Header="Included in Price" Binding="{Binding IncludedInPrice}" Width="130" />
+                                <DataGridTemplateColumn Header="Status" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Button Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleTaxStatusCommand}" CommandParameter="{Binding .}" IsVisible="{Binding IsActive}" Background="#2E7D32" Foreground="White" Content="Active" FontSize="11" Padding="10,4" CornerRadius="4" Cursor="Hand" />
+                                                <Button Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleTaxStatusCommand}" CommandParameter="{Binding .}" IsVisible="{Binding !IsActive}" Background="#D32F2F" Foreground="White" Content="Inactive" FontSize="11" Padding="10,4" CornerRadius="4" Cursor="Hand" />
+                                            </Panel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Actions" Width="140">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="5" Margin="5,0">
+                                                <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditTaxFormCommand}" CommandParameter="{Binding .}" FontSize="11" Padding="6,3" />
+                                                <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteTaxCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="11" Padding="6,3" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Panel>
             </ScrollViewer>
         </Border>
     </Grid>

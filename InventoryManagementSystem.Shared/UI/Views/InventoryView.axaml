@@ -64,9 +64,17 @@
         </SplitView.Pane>
 
         <SplitView.Content>
-            <Grid RowDefinitions="Auto, *">
+            <Grid RowDefinitions="Auto, Auto, *">
+                <!-- Quick Actions Toolbar -->
+                <Border Grid.Row="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,0,0,12" Margin="0,0,10,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Quick Actions:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button Content="Purchase Orders" Command="{Binding GoToPurchaseOrdersCommand}" Background="#007ACC" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Header / Toolbar -->
-                <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,0,10,10">
+                <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto" Margin="0,0,10,10">
                     <TextBox Text="{Binding SearchText}" Watermark="{Binding Language.Resources[Inv_SearchPlaceholder]}" Width="300" HorizontalAlignment="Left"/>
                     
                     <Button Grid.Column="1" Margin="0,0,10,0" 
@@ -80,7 +88,7 @@
                 </Grid>
 
                 <!-- Product List -->
-                <DataGrid Grid.Row="1" ItemsSource="{Binding Products}" 
+                <DataGrid Grid.Row="2" ItemsSource="{Binding Products}" 
                           SelectedItem="{Binding SelectedProduct}"
                           AutoGenerateColumns="False" 
                           IsReadOnly="True" 

@@ -31,7 +31,7 @@ namespace InventoryManagementSystem.Services
             {
                 ["Dashboard"] = "Dashboard",
                 ["POS"] = "POS / Cashier",
-                ["Inventory"] = "Inventory",
+                ["Inventory"] = "Products",
                 ["Reports"] = "Reports",
                 ["Insights"] = "Insights",
                 ["Users"] = "Users",
@@ -124,7 +124,7 @@ namespace InventoryManagementSystem.Services
             {
                 ["Dashboard"] = "Tableau de bord",
                 ["POS"] = "Caisse / PV",
-                ["Inventory"] = "Inventaire",
+                ["Inventory"] = "Produits",
                 ["Reports"] = "Rapports",
                 ["Insights"] = "Analyses",
                 ["Users"] = "Utilisateurs",
@@ -218,7 +218,7 @@ namespace InventoryManagementSystem.Services
             {
                 ["Dashboard"] = "Ikibaho (Dashboard)",
                 ["POS"] = "Ahagurirwa (POS)",
-                ["Inventory"] = "Ububiko",
+                ["Inventory"] = "Ibicuruzwa",
                 ["Reports"] = "Raporo",
                 ["Insights"] = "Isesengura",
                 ["Users"] = "Abakozi",

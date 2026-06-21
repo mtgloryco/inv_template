@@ -175,21 +175,65 @@ namespace InventoryManagementSystem.Services
         {
             try
             {
-                // STABILITY FIX: 
-                // 1. Filter only Ethernet/WiFi
-                // 2. Sort by Name (e.g. eth0, wlan0) instead of ID, as ID can change if drivers reload.
-                // 3. Prefer Ethernet over WiFi (Ethernet is less likely to be a USB dongle).
-                
+                // Filter only Ethernet/WiFi
                 var nics = NetworkInterface.GetAllNetworkInterfaces()
                     .Where(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet || nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
-                    .OrderByDescending(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet) // Ethernet first
-                    .ThenBy(nic => nic.Name) // Then alphabetically by name
                     .ToList();
 
+                // Advanced filtering to exclude virtual interfaces (Docker, VMs, VPNs)
+                var physicalNics = nics.Where(nic => 
+                {
+                    var name = nic.Name.ToLowerInvariant();
+                    var desc = nic.Description.ToLowerInvariant();
+
+                    // Check common virtual naming conventions across platforms
+                    if (name.Contains("docker") || name.Contains("veth") || name.Contains("br-") || name.Contains("bridge") ||
+                        name.Contains("vbox") || name.Contains("virtual") || name.Contains("vmnet") || name.Contains("vboxnet") ||
+                        name.Contains("vpn") || name.Contains("tun") || name.Contains("tap") || name.Contains("tailscale") ||
+                        name.Contains("zerotier") || name.Contains("ppp") || name.Contains("lo") || name.Contains("wsl") ||
+                        name.Contains("hyper-v") || name.Contains("microsoft wifi direct") || name.Contains("pseudo") || 
+                        name.Contains("loopback") || name.Contains("wireguard") || name.Contains("wg") || name.StartsWith("br"))
+                    {
+                        return false;
+                    }
+
+                    if (desc.Contains("docker") || desc.Contains("virtual") || desc.Contains("vbox") || desc.Contains("vmware") ||
+                        desc.Contains("hyper-v") || desc.Contains("vpn") || desc.Contains("tunnel") || desc.Contains("pseudo") ||
+                        desc.Contains("loopback") || desc.Contains("microsoft wifi direct") || desc.Contains("bridge") ||
+                        desc.Contains("tap") || desc.Contains("tailscale"))
+                    {
+                        return false;
+                    }
+
+                    // Linux-specific check: physical interfaces have a 'device' link in sysfs
+                    if (OperatingSystem.IsLinux())
+                    {
+                        var sysDevicePath = $"/sys/class/net/{nic.Name}/device";
+                        if (!Directory.Exists(sysDevicePath) && !File.Exists(sysDevicePath))
+                        {
+                            return false; // No physical hardware backing this interface
+                        }
+                    }
+
+                    return true;
+                })
+                .OrderByDescending(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet) // Ethernet first
+                .ThenBy(nic => nic.Name) // Then alphabetically by name
+                .ToList();
+
+                foreach (var nic in physicalNics)
+                {
+                    var addr = nic.GetPhysicalAddress().ToString();
+                    if (!string.IsNullOrEmpty(addr) && addr.Length > 0 && addr != "000000000000") 
+                        return addr;
+                }
+                
+                // Fallback to first non-empty MAC if physical list is empty
                 foreach (var nic in nics)
                 {
                     var addr = nic.GetPhysicalAddress().ToString();
-                    if (!string.IsNullOrEmpty(addr) && addr.Length > 0) return addr;
+                    if (!string.IsNullOrEmpty(addr) && addr.Length > 0 && addr != "000000000000") 
+                        return addr;
                 }
                 
                 return "000000000000";

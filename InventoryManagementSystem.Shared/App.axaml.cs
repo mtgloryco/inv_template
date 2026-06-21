@@ -35,7 +35,7 @@ public partial class App : Application
                     services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
                     services.expiry, services.location, services.returns, services.advancedAnalytics, 
                     services.bundle, services.audit, services.reporting, services.cloudSync, 
-                    services.briefing),
+                    services.briefing, services.tax),
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
@@ -48,7 +48,7 @@ public partial class App : Application
                     services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
                     services.expiry, services.location, services.returns, services.advancedAnalytics, 
                     services.bundle, services.audit, services.reporting, services.cloudSync, 
-                    services.briefing),
+                    services.briefing, services.tax),
             };
         }
 
@@ -61,7 +61,8 @@ public partial class App : Application
         SettingsService settings, SupplierService supplier, PurchaseOrderService purchaseOrder, 
         ForecastingService forecasting, ExpiryService expiry, LocationService location, ReturnsService returns, 
         AdvancedAnalyticsService advancedAnalytics, BundleService bundle, AuditService audit, 
-        ReportingService reporting, CloudSyncService cloudSync, DailyBriefingService briefing) InitializeServices()
+        ReportingService reporting, CloudSyncService cloudSync, DailyBriefingService briefing,
+        TaxService tax) InitializeServices()
     {
         // Initialize Database
         var dbService = new DatabaseService();
@@ -88,6 +89,7 @@ public partial class App : Application
         var reportingService = new ReportingService(dbService, settingsService);
         var cloudSyncService = new CloudSyncService(dbService);
         var dailyBriefingService = new DailyBriefingService(dbService);
+        var taxService = new TaxService(dbService);
 
         // Initialize services on a background thread to prevent UI thread deadlock
         Task.Run(async () =>
@@ -111,7 +113,7 @@ public partial class App : Application
             analyticsService, receiptService, languageService, updateService, 
             settingsService, supplierService, purchaseOrderService, forecastingService, 
             expiryService, locationService, returnsService, advancedAnalyticsService, 
-            bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService);
+            bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService, taxService);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

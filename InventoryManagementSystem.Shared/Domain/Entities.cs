@@ -98,10 +98,22 @@ namespace InventoryManagementSystem.Domain
         public string Email { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
         public int DefaultLeadTimeDays { get; set; }
-        public string PaymentTerms { get; set; } = string.Empty;
+        public string PaymentTerms { get; set; } = "Direct Payment";
+        public string SupplierType { get; set; } = "Company";
+        public string TinNumber { get; set; } = string.Empty;
+        public string WebsiteUrl { get; set; } = string.Empty;
+        public string LogoFileName { get; set; } = string.Empty;
         public decimal Rating { get; set; } = 3m;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class SupplierProduct
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int SupplierId { get; set; }
+        public int ProductId { get; set; }
     }
 
     public class PurchaseOrder
@@ -257,5 +269,20 @@ namespace InventoryManagementSystem.Domain
         public string OldValues { get; set; } = string.Empty;  // JSON snapshot of before
         public string NewValues { get; set; } = string.Empty;  // JSON snapshot of after
         public string IpAddress { get; set; } = string.Empty;
+    }
+
+    public class Tax
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Computation { get; set; } = "Percentage"; // Percentage, Fixed
+        public decimal Amount { get; set; }
+        public string TaxType { get; set; } = "Sales"; // Sales, Purchases
+        public string Description { get; set; } = string.Empty;
+        public string LabelOnInvoice { get; set; } = string.Empty;
+        public string Scope { get; set; } = "Goods"; // Goods, Services
+        public string IncludedInPrice { get; set; } = "Exclude"; // Include, Exclude
+        public bool IsActive { get; set; } = true;
     }
 }

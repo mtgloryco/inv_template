@@ -85,5 +85,55 @@ namespace InventoryManagementSystem.Services
 
             return scored.OrderByDescending(s => s.Score).Take(limit).Select(s => s.Supplier).ToList();
         }
+
+        public async Task<List<Product>> GetSupplierProductsAsync(int supplierId)
+        {
+            var relations = await _databaseService.Connection.Table<SupplierProduct>()
+                .Where(sp => sp.SupplierId == supplierId)
+                .ToListAsync();
+
+            var productIds = relations.Select(sp => sp.ProductId).ToList();
+            if (!productIds.Any()) return new List<Product>();
+
+            var products = new List<Product>();
+            foreach (var id in productIds)
+            {
+                var prod = await _databaseService.Connection.FindAsync<Product>(id);
+                if (prod != null)
+                {
+                    products.Add(prod);
+                }
+            }
+            return products.OrderBy(p => p.Name).ToList();
+        }
+
+        public async Task LinkProductToSupplierAsync(int supplierId, int productId)
+        {
+            var exists = await _databaseService.Connection.Table<SupplierProduct>()
+                .Where(sp => sp.SupplierId == supplierId && sp.ProductId == productId)
+                .FirstOrDefaultAsync();
+
+            if (exists == null)
+            {
+                await _databaseService.Connection.InsertAsync(new SupplierProduct
+                {
+                    SupplierId = supplierId,
+                    ProductId = productId
+                });
+            }
+        }
+
+        public async Task UnlinkProductFromSupplierAsync(int supplierId, int productId)
+        {
+            var relation = await _databaseService.Connection.Table<SupplierProduct>()
+                .Where(sp => sp.SupplierId == supplierId && sp.ProductId == productId)
+                .FirstOrDefaultAsync();
+
+            if (relation != null)
+            {
+                await _databaseService.Connection.DeleteAsync(relation);
+            }
+        }
     }
 }
+

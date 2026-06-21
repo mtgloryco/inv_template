@@ -47,6 +47,7 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<User>();
             await _connection.CreateTableAsync<LocalLicense>();
             await _connection.CreateTableAsync<Supplier>();
+            await _connection.CreateTableAsync<SupplierProduct>();
             await _connection.CreateTableAsync<PurchaseOrder>();
             await _connection.CreateTableAsync<PurchaseOrderItem>();
             await _connection.CreateTableAsync<ReorderRule>();
@@ -57,6 +58,7 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<SupplierReturn>();
             await _connection.CreateTableAsync<ProductBundle>();
             await _connection.CreateTableAsync<AuditLog>();
+            await _connection.CreateTableAsync<Tax>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();

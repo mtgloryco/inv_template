@@ -28,6 +28,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ReportingService _reportingService;
     private readonly CloudSyncService _cloudSyncService;
     private readonly DailyBriefingService _dailyBriefingService;
+    private readonly TaxService _taxService;
 
     // Navigation Stack
     private readonly System.Collections.Generic.Stack<ViewModelBase> _navigationStack = new();
@@ -86,7 +87,8 @@ public partial class MainViewModel : ViewModelBase
         AuditService auditService,
         ReportingService reportingService,
         CloudSyncService cloudSyncService,
-        DailyBriefingService dailyBriefingService)
+        DailyBriefingService dailyBriefingService,
+        TaxService taxService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -109,6 +111,7 @@ public partial class MainViewModel : ViewModelBase
         _reportingService = reportingService;
         _cloudSyncService = cloudSyncService;
         _dailyBriefingService = dailyBriefingService;
+        _taxService = taxService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -242,7 +245,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language));
+    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language, GoToPurchaseOrders));
 
     [RelayCommand]
     public void GoToReports()
@@ -292,7 +295,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToSettings()
     {
-        NavigateTo(new SettingsViewModel(_settingsService, Language));
+        NavigateTo(new SettingsViewModel(_settingsService, Language, _taxService));
     }
 
     [RelayCommand]
@@ -304,7 +307,7 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        NavigateTo(new SuppliersViewModel(_supplierService));
+        NavigateTo(new SuppliersViewModel(_supplierService, _inventoryService));
     }
 
     [RelayCommand]
