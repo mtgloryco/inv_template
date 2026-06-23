@@ -241,6 +241,7 @@ namespace InventoryManagementSystem.Services
                     };
                     conn.Insert(movement);
 
+                    decimal cogsAmount = 0;
                     foreach (var batch in batches)
                     {
                         if (remainingToDeduct <= 0) break;
@@ -256,6 +257,8 @@ namespace InventoryManagementSystem.Services
                         };
                         conn.Insert(usage);
 
+                        cogsAmount += deductFromThisBatch * batch.CostPerUnit;
+
                         batch.QuantityRemaining -= deductFromThisBatch;
                         conn.Update(batch);
 
@@ -265,6 +268,92 @@ namespace InventoryManagementSystem.Services
                     if (remainingToDeduct > 0)
                     {
                         throw new InvalidOperationException("Insufficient batch stock.");
+                    }
+
+                    // --- Post Journal Entry for Sales ---
+                    var journal = conn.Table<Journal>().Where(j => j.Type == "Sales").FirstOrDefault()
+                                  ?? conn.Table<Journal>().Where(j => j.Name == "Point of Sale").FirstOrDefault();
+                    if (journal != null)
+                    {
+                        var entryCount = conn.Table<JournalEntry>().Where(e => e.JournalId == journal.Id).Count();
+                        var entryNumber = $"{journal.SequencePrefix}/{DateTime.Now.Year}/{(entryCount + 1):D5}";
+
+                        var entry = new JournalEntry
+                        {
+                            EntryNumber = entryNumber,
+                            JournalId = journal.Id,
+                            Date = DateTime.Now,
+                            Reference = $"POS Sale - {movement.Id}",
+                            State = "Posted"
+                        };
+                        conn.Insert(entry);
+
+                        // Debit Cash on Hand (101000)
+                        var cashAccount = conn.Table<Account>().Where(a => a.Code == "101000").FirstOrDefault();
+                        int debitAccountId = cashAccount?.Id ?? 1;
+                        decimal revenueAmount = quantity * movement.UnitPrice;
+
+                        conn.Insert(new JournalLine
+                        {
+                            JournalEntryId = entry.Id,
+                            AccountId = debitAccountId,
+                            ProductId = productId,
+                            Label = $"POS Sale - {product.Name} (Qty: {quantity})",
+                            Debit = revenueAmount,
+                            Credit = 0
+                        });
+
+                        // Credit Income Account (product.IncomeAccountId or 401000 Product Sales Revenue)
+                        int creditAccountId = product.IncomeAccountId ?? 0;
+                        if (creditAccountId == 0)
+                        {
+                            var revAccount = conn.Table<Account>().Where(a => a.Code == "401000").FirstOrDefault();
+                            creditAccountId = revAccount?.Id ?? 13;
+                        }
+
+                        conn.Insert(new JournalLine
+                        {
+                            JournalEntryId = entry.Id,
+                            AccountId = creditAccountId,
+                            ProductId = productId,
+                            Label = $"POS Sale - {product.Name} (Qty: {quantity})",
+                            Debit = 0,
+                            Credit = revenueAmount
+                        });
+
+                        // COGS & Inventory Asset
+                        if (product.ProductType == "Good" && cogsAmount > 0)
+                        {
+                            int cogsAccountId = product.ExpenseAccountId ?? 0;
+                            if (cogsAccountId == 0)
+                            {
+                                var expAccount = conn.Table<Account>().Where(a => a.Code == "501000").FirstOrDefault();
+                                cogsAccountId = expAccount?.Id ?? 16;
+                            }
+
+                            var inventoryAccount = conn.Table<Account>().Where(a => a.Code == "120000").FirstOrDefault();
+                            int assetAccountId = inventoryAccount?.Id ?? 4;
+
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = cogsAccountId,
+                                ProductId = productId,
+                                Label = $"COGS - {product.Name} (Qty: {quantity})",
+                                Debit = cogsAmount,
+                                Credit = 0
+                            });
+
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = assetAccountId,
+                                ProductId = productId,
+                                Label = $"Inventory Issue - {product.Name} (Qty: {quantity})",
+                                Debit = 0,
+                                Credit = cogsAmount
+                            });
+                        }
                     }
                 }
                 else if (type == "ADJUST")
@@ -289,6 +378,79 @@ namespace InventoryManagementSystem.Services
                         Username = user
                     };
                     conn.Insert(movement);
+
+                    // Post Journal Entry for Adjustment/IN
+                    var journal = conn.Table<Journal>().Where(j => j.SequencePrefix == "STJ").FirstOrDefault()
+                                  ?? conn.Table<Journal>().Where(j => j.Type == "Miscellaneous").FirstOrDefault();
+                    if (journal != null)
+                    {
+                        var entryCount = conn.Table<JournalEntry>().Where(e => e.JournalId == journal.Id).Count();
+                        var entryNumber = $"{journal.SequencePrefix}/{DateTime.Now.Year}/{(entryCount + 1):D5}";
+
+                        var entry = new JournalEntry
+                        {
+                            EntryNumber = entryNumber,
+                            JournalId = journal.Id,
+                            Date = DateTime.Now,
+                            Reference = $"Adjustment: {reason}",
+                            State = "Posted"
+                        };
+                        conn.Insert(entry);
+
+                        decimal costPerUnit = customCost ?? product.Cost;
+                        decimal totalVal = Math.Abs(quantity) * costPerUnit;
+
+                        var inventoryAccount = conn.Table<Account>().Where(a => a.Code == "120000").FirstOrDefault();
+                        int assetAccountId = inventoryAccount?.Id ?? 4;
+
+                        var adjExpAccount = conn.Table<Account>().Where(a => a.Code == "520000").FirstOrDefault();
+                        int offsetAccountId = adjExpAccount?.Id ?? 18;
+
+                        if (type == "IN" || (type == "ADJUST" && quantity > 0))
+                        {
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = assetAccountId,
+                                ProductId = productId,
+                                Label = $"Stock Adj IN - {product.Name} (Qty: {Math.Abs(quantity)})",
+                                Debit = totalVal,
+                                Credit = 0
+                            });
+
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = offsetAccountId,
+                                ProductId = productId,
+                                Label = $"Stock Adj IN - {product.Name} (Qty: {Math.Abs(quantity)})",
+                                Debit = 0,
+                                Credit = totalVal
+                            });
+                        }
+                        else if (type == "ADJUST" && quantity < 0)
+                        {
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = offsetAccountId,
+                                ProductId = productId,
+                                Label = $"Stock Adj OUT - {product.Name} (Qty: {Math.Abs(quantity)})",
+                                Debit = totalVal,
+                                Credit = 0
+                            });
+
+                            conn.Insert(new JournalLine
+                            {
+                                JournalEntryId = entry.Id,
+                                AccountId = assetAccountId,
+                                ProductId = productId,
+                                Label = $"Stock Adj OUT - {product.Name} (Qty: {Math.Abs(quantity)})",
+                                Debit = 0,
+                                Credit = totalVal
+                            });
+                        }
+                    }
                 }
             });
         }
@@ -389,6 +551,54 @@ namespace InventoryManagementSystem.Services
             overview.TotalInventoryValue = await GetTotalInventoryValueAsync();
 
             return overview;
+        }
+
+        // Product Unit UoM CRUD Methods
+        public async Task<List<ProductUnit>> GetProductUnitsAsync()
+        {
+            return await _databaseService.Connection.Table<ProductUnit>().OrderBy(u => u.Name).ToListAsync();
+        }
+
+        public async Task AddProductUnitAsync(ProductUnit unit)
+        {
+            await _databaseService.Connection.InsertAsync(unit);
+        }
+
+        public async Task UpdateProductUnitAsync(ProductUnit unit)
+        {
+            await _databaseService.Connection.UpdateAsync(unit);
+        }
+
+        public async Task DeleteProductUnitAsync(int unitId)
+        {
+            var unit = await _databaseService.Connection.FindAsync<ProductUnit>(unitId);
+            if (unit != null)
+            {
+                await _databaseService.Connection.DeleteAsync(unit);
+            }
+        }
+
+        // Category CRUD methods
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            return await _databaseService.Connection.Table<Category>().OrderBy(c => c.Name).ToListAsync();
+        }
+
+        public async Task AddCategoryAsync(Category category)
+        {
+            await _databaseService.Connection.InsertAsync(category);
+        }
+
+        // Backend Invoicing Policy Enforcement validation
+        public void ValidateInvoicingPolicy(Product product, int orderedQty, int deliveredQty, int toInvoiceQty)
+        {
+            if (product.InvoicingPolicy == "Delivered quantities")
+            {
+                if (toInvoiceQty > deliveredQty)
+                {
+                    throw new InvalidOperationException($"Invoicing policy constraint: Cannot invoice {toInvoiceQty} units for product '{product.Name}' because only {deliveredQty} units have been delivered.");
+                }
+            }
         }
     }
 

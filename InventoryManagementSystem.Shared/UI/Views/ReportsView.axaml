@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             xmlns:helpers="using:InventoryManagementSystem.UI.Helpers"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
              x:Class="InventoryManagementSystem.UI.Views.ReportsView"
              x:DataType="vm:ReportsViewModel"
@@ -135,7 +136,7 @@
 
         <!-- DETAILS MODAL -->
         <Border Background="#44000000" Grid.RowSpan="2" IsVisible="{Binding IsDetailsModalOpen}">
-             <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" Width="600" Height="450" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="30" BoxShadow="0 10 40 0 #44000000">
+             <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" MinWidth="400" MinHeight="300" Width="600" Height="480" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="30" BoxShadow="0 10 40 0 #44000000" helpers:ResizableHelper.CanResize="True">
                  <Grid RowDefinitions="Auto, *, Auto">
                      <StackPanel Spacing="10">
                          <TextBlock Text="Transaction Details" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}"/>

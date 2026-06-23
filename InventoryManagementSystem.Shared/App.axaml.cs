@@ -30,25 +30,25 @@ public partial class App : Application
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainViewModel(
-                    services.inventory, services.user, services.license, services.hardware, 
-                    services.analytics, services.receipt, services.language, services.update, 
-                    services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
-                    services.expiry, services.location, services.returns, services.advancedAnalytics, 
-                    services.bundle, services.audit, services.reporting, services.cloudSync, 
-                    services.briefing, services.tax),
+                    services.inventory, services.user, services.license, services.hardware,
+                    services.analytics, services.receipt, services.language, services.update,
+                    services.settings, services.supplier, services.purchaseOrder, services.forecasting,
+                    services.expiry, services.location, services.returns, services.advancedAnalytics,
+                    services.bundle, services.audit, services.reporting, services.cloudSync,
+                    services.briefing, services.tax, services.account, services.journal, services.accountingReport),
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             singleViewPlatform.MainView = new MainView
             {
-                 DataContext = new MainViewModel(
-                    services.inventory, services.user, services.license, services.hardware, 
-                    services.analytics, services.receipt, services.language, services.update, 
-                    services.settings, services.supplier, services.purchaseOrder, services.forecasting, 
-                    services.expiry, services.location, services.returns, services.advancedAnalytics, 
-                    services.bundle, services.audit, services.reporting, services.cloudSync, 
-                    services.briefing, services.tax),
+                DataContext = new MainViewModel(
+                    services.inventory, services.user, services.license, services.hardware,
+                    services.analytics, services.receipt, services.language, services.update,
+                    services.settings, services.supplier, services.purchaseOrder, services.forecasting,
+                    services.expiry, services.location, services.returns, services.advancedAnalytics,
+                    services.bundle, services.audit, services.reporting, services.cloudSync,
+                    services.briefing, services.tax, services.account, services.journal, services.accountingReport),
             };
         }
 
@@ -56,13 +56,13 @@ public partial class App : Application
     }
 
     private (
-        InventoryService inventory, UserService user, LicenseService license, HardwareIdService hardware, 
-        AnalyticsService analytics, ReceiptService receipt, LanguageService language, UpdateService update, 
-        SettingsService settings, SupplierService supplier, PurchaseOrderService purchaseOrder, 
-        ForecastingService forecasting, ExpiryService expiry, LocationService location, ReturnsService returns, 
-        AdvancedAnalyticsService advancedAnalytics, BundleService bundle, AuditService audit, 
+        InventoryService inventory, UserService user, LicenseService license, HardwareIdService hardware,
+        AnalyticsService analytics, ReceiptService receipt, LanguageService language, UpdateService update,
+        SettingsService settings, SupplierService supplier, PurchaseOrderService purchaseOrder,
+        ForecastingService forecasting, ExpiryService expiry, LocationService location, ReturnsService returns,
+        AdvancedAnalyticsService advancedAnalytics, BundleService bundle, AuditService audit,
         ReportingService reporting, CloudSyncService cloudSync, DailyBriefingService briefing,
-        TaxService tax) InitializeServices()
+        TaxService tax, AccountService account, JournalService journal, AccountingReportService accountingReport) InitializeServices()
     {
         // Initialize Database
         var dbService = new DatabaseService();
@@ -90,6 +90,9 @@ public partial class App : Application
         var cloudSyncService = new CloudSyncService(dbService);
         var dailyBriefingService = new DailyBriefingService(dbService);
         var taxService = new TaxService(dbService);
+        var accountService = new AccountService(dbService);
+        var journalService = new JournalService(dbService);
+        var accountingReportService = new AccountingReportService(dbService);
 
         // Initialize services on a background thread to prevent UI thread deadlock
         Task.Run(async () =>
@@ -109,11 +112,12 @@ public partial class App : Application
         }).Wait();
 
         return (
-            inventoryService, userService, licenseService, hardwareService, 
-            analyticsService, receiptService, languageService, updateService, 
-            settingsService, supplierService, purchaseOrderService, forecastingService, 
-            expiryService, locationService, returnsService, advancedAnalyticsService, 
-            bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService, taxService);
+            inventoryService, userService, licenseService, hardwareService,
+            analyticsService, receiptService, languageService, updateService,
+            settingsService, supplierService, purchaseOrderService, forecastingService,
+            expiryService, locationService, returnsService, advancedAnalyticsService,
+            bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService,
+            taxService, accountService, journalService, accountingReportService);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

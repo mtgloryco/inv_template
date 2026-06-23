@@ -35,6 +35,14 @@ namespace InventoryManagementSystem.Infrastructure
 
         public async Task InitializeAsync()
         {
+            // 0. Enable WAL journal mode and optimize synchronicity settings for performance
+            try
+            {
+                await _connection.ExecuteAsync("PRAGMA journal_mode = WAL;");
+                await _connection.ExecuteAsync("PRAGMA synchronous = NORMAL;");
+            }
+            catch {}
+
             // 1. Check for legacy import
             await ImportLegacyDatabaseIfNeeded();
 
@@ -59,6 +67,14 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<ProductBundle>();
             await _connection.CreateTableAsync<AuditLog>();
             await _connection.CreateTableAsync<Tax>();
+            await _connection.CreateTableAsync<ProductUnit>();
+            await _connection.CreateTableAsync<Account>();
+            await _connection.CreateTableAsync<Journal>();
+            await _connection.CreateTableAsync<JournalEntry>();
+            await _connection.CreateTableAsync<JournalLine>();
+            await _connection.CreateTableAsync<AccountingReport>();
+            await _connection.CreateTableAsync<ReportLine>();
+            await _connection.CreateTableAsync<ReportLineComputation>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();
@@ -113,6 +129,257 @@ namespace InventoryManagementSystem.Infrastructure
                     PasswordHash = "admin123", // Ideally hashed, but for v1 MVP default
                     IsActive = true
                 });
+            }
+
+            var unitCount = await _connection.Table<ProductUnit>().CountAsync();
+            if (unitCount == 0)
+            {
+                await _connection.InsertAllAsync(new[]
+                {
+                    new ProductUnit { Name = "Per Unit", Quantity = 1.0, GroupInPOS = false },
+                    new ProductUnit { Name = "Pcs", Quantity = 1.0, GroupInPOS = false },
+                    new ProductUnit { Name = "Box", Quantity = 1.0, GroupInPOS = false },
+                    new ProductUnit { Name = "g", Quantity = 1.0, GroupInPOS = false },
+                    new ProductUnit { Name = "kg", Quantity = 1.0, GroupInPOS = false },
+                    new ProductUnit { Name = "l", Quantity = 1.0, GroupInPOS = false }
+                });
+            }
+
+            var accountCount = await _connection.Table<Account>().CountAsync();
+            if (accountCount == 0)
+            {
+                await _connection.InsertAllAsync(new[]
+                {
+                    // 1. Assets
+                    new Account { Code = "101000", Name = "Cash on Hand", Type = "Asset: Bank and Cash", Currency = "RWF", IsActive = true, Description = "Cash register and on-hand currency", PaymentReconciliation = true },
+                    new Account { Code = "102000", Name = "Bank Account", Type = "Asset: Bank and Cash", Currency = "RWF", IsActive = true, Description = "Main operating bank account", PaymentReconciliation = true },
+                    new Account { Code = "111000", Name = "Accounts Receivable", Type = "Asset: Receivable", Currency = "RWF", IsActive = true, Description = "Unpaid customer invoices", PaymentReconciliation = true },
+                    new Account { Code = "120000", Name = "Inventory Asset", Type = "Asset: Current Asset", Currency = "RWF", IsActive = true, Description = "Asset value of products in stock" },
+                    new Account { Code = "130000", Name = "Prepayments", Type = "Asset: Pre Payments", Currency = "RWF", IsActive = true, Description = "Prepaid vendor expenses" },
+                    new Account { Code = "140000", Name = "Fixed Assets", Type = "Asset: Fixed Asset", Currency = "RWF", IsActive = true, Description = "Long-term tangible assets" },
+                    
+                    // 2. Liabilities
+                    new Account { Code = "201000", Name = "Accounts Payable", Type = "Liability: Payable", Currency = "RWF", IsActive = true, Description = "Unpaid vendor bills", PaymentReconciliation = true },
+                    new Account { Code = "211000", Name = "Credit Card", Type = "Liability: Credit Card", Currency = "RWF", IsActive = true, Description = "Corporate credit cards", PaymentReconciliation = true },
+                    new Account { Code = "220000", Name = "VAT Payable", Type = "Liability: Current Liability", Currency = "RWF", IsActive = true, Description = "Collected sales taxes minus paid purchase taxes" },
+                    
+                    // 3. Equity
+                    new Account { Code = "301000", Name = "Share Capital", Type = "Equity: Equity", Currency = "RWF", IsActive = true, Description = "Initial owner contributions" },
+                    new Account { Code = "390000", Name = "Retained Earnings", Type = "Equity: Equity", Currency = "RWF", IsActive = true, Description = "Accumulated earnings from prior periods" },
+                    new Account { Code = "399000", Name = "Current Year Earnings", Type = "Equity: Current Year Earnings", Currency = "RWF", IsActive = true, Description = "Earnings/Profit from current financial year" },
+                    
+                    // 4. Income
+                    new Account { Code = "401000", Name = "Product Sales Revenue", Type = "Income: Income", Currency = "RWF", IsActive = true, Description = "Revenue from product sales" },
+                    new Account { Code = "402000", Name = "Service Revenue", Type = "Income: Income", Currency = "RWF", IsActive = true, Description = "Revenue from service contracts" },
+                    new Account { Code = "490000", Name = "Other Income", Type = "Income: Other Incomes", Currency = "RWF", IsActive = true, Description = "Non-operating revenues" },
+                    
+                    // 5. Expense
+                    new Account { Code = "501000", Name = "Cost of Goods Sold (COGS)", Type = "Expense: Cost of Revenue", Currency = "RWF", IsActive = true, Description = "Direct costs of goods sold to customers" },
+                    new Account { Code = "511000", Name = "General Expenses", Type = "Expense: Expenses", Currency = "RWF", IsActive = true, Description = "Operational overhead expenses" },
+                    new Account { Code = "520000", Name = "Inventory Adjustment Expense", Type = "Expense: Expenses", Currency = "RWF", IsActive = true, Description = "Expenses from inventory write-offs or adjustments" },
+                    new Account { Code = "590000", Name = "Other Expenses", Type = "Expense: Other Expenses", Currency = "RWF", IsActive = true, Description = "Non-operating expenses" }
+                });
+            }
+
+            var journalCount = await _connection.Table<Journal>().CountAsync();
+            if (journalCount == 0)
+            {
+                var salesAcc  = await _connection.Table<Account>().Where(a => a.Code == "401000").FirstOrDefaultAsync();
+                var cogsAcc   = await _connection.Table<Account>().Where(a => a.Code == "501000").FirstOrDefaultAsync();
+                var bankAcc   = await _connection.Table<Account>().Where(a => a.Code == "102000").FirstOrDefaultAsync();
+                var cashAcc   = await _connection.Table<Account>().Where(a => a.Code == "101000").FirstOrDefaultAsync();
+
+                await _connection.InsertAllAsync(new Journal[]
+                {
+                    new() { Name = "Sales",                    Type = "Sales",         SequencePrefix = "INV",  DefaultAccountId = salesAcc?.Id, Currency = "RWF" },
+                    new() { Name = "Purchases",                Type = "Purchase",      SequencePrefix = "BILL", DefaultAccountId = cogsAcc?.Id,  Currency = "RWF" },
+                    new() { Name = "Bank",                     Type = "Bank",          SequencePrefix = "BNK1", DefaultAccountId = bankAcc?.Id,  Currency = "RWF" },
+                    new() { Name = "Miscellaneous Operations", Type = "Miscellaneous", SequencePrefix = "MISC",                                  Currency = "RWF" },
+                    new() { Name = "Exchange Difference",      Type = "Miscellaneous", SequencePrefix = "EXCH",                                  Currency = "RWF" },
+                    new() { Name = "Cash Basis Taxes",         Type = "Miscellaneous", SequencePrefix = "CABA",                                  Currency = "RWF" },
+                    new() { Name = "Tax Returns",              Type = "Miscellaneous", SequencePrefix = "TAX",                                   Currency = "RWF" },
+                    new() { Name = "Inventory Valuation",      Type = "Miscellaneous", SequencePrefix = "STJ",                                   Currency = "RWF" },
+                    new() { Name = "Point of Sale",            Type = "Miscellaneous", SequencePrefix = "POSS",                                  Currency = "RWF" },
+                    new() { Name = "Cash Clothes Shop",        Type = "Cash",          SequencePrefix = "CSH1", DefaultAccountId = cashAcc?.Id,  Currency = "RWF" },
+                    new() { Name = "Salaries",                 Type = "Miscellaneous", SequencePrefix = "SLR",                                   Currency = "RWF" },
+                });
+            }
+
+            var reportCount = await _connection.Table<AccountingReport>().CountAsync();
+            if (reportCount == 0)
+            {
+                await _connection.InsertAllAsync(new AccountingReport[]
+                {
+                    new() { Name = "Balance Sheet", RootReport = "Financial Statements" },
+                    new() { Name = "Profit and Loss", RootReport = "Financial Statements" },
+                    new() { Name = "Cash Flow Statement", RootReport = "Financial Statements" },
+                    new() { Name = "Executive Summary", RootReport = "Management Reports" },
+                    new() { Name = "Journals Report", RootReport = "Audit Reports" },
+                    new() { Name = "Trial Balance", RootReport = "Financial Statements" },
+                    new() { Name = "Tax Report", RootReport = "Tax Filings" },
+                    new() { Name = "Annual Statement", RootReport = "Annual Filings" }
+                });
+
+                // Seed Balance Sheet default configuration
+                var bsReport = await _connection.Table<AccountingReport>().Where(r => r.Name == "Balance Sheet").FirstOrDefaultAsync();
+                if (bsReport != null)
+                {
+                    // 1. Assets
+                    var assetsLine = new ReportLine { ReportId = bsReport.Id, Name = "Assets", Code = "assets", Level = 1, Foldability = "Foldable" };
+                    await _connection.InsertAsync(assetsLine);
+
+                    var currentAssetsLine = new ReportLine { ReportId = bsReport.Id, Name = "Current Assets", Code = "assets_current", Level = 2, Foldability = "Foldable" };
+                    await _connection.InsertAsync(currentAssetsLine);
+
+                    var cashLine = new ReportLine { ReportId = bsReport.Id, Name = "Cash and Cash Equivalents", Code = "cash_equiv", Level = 3, Foldability = "Foldable" };
+                    await _connection.InsertAsync(cashLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = cashLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "101,102" });
+
+                    var arLine = new ReportLine { ReportId = bsReport.Id, Name = "Accounts Receivable", Code = "ar", Level = 3, Foldability = "Foldable" };
+                    await _connection.InsertAsync(arLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = arLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "111" });
+
+                    var invLine = new ReportLine { ReportId = bsReport.Id, Name = "Inventory Asset", Code = "inventory", Level = 3, Foldability = "Foldable" };
+                    await _connection.InsertAsync(invLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = invLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "120" });
+
+                    // Sum current assets
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = currentAssetsLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "cash_equiv+ar+inventory" });
+
+                    // Total Assets Line
+                    var totalAssetsLine = new ReportLine { ReportId = bsReport.Id, Name = "Total Assets", Code = "total_assets", Level = 1, Foldability = "Never Foldable" };
+                    await _connection.InsertAsync(totalAssetsLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = totalAssetsLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "assets_current" });
+
+                    // 2. Liabilities
+                    var liabilitiesLine = new ReportLine { ReportId = bsReport.Id, Name = "Liabilities", Code = "liabilities", Level = 1, Foldability = "Foldable" };
+                    await _connection.InsertAsync(liabilitiesLine);
+
+                    var currentLiabilitiesLine = new ReportLine { ReportId = bsReport.Id, Name = "Current Liabilities", Code = "liabilities_current", Level = 2, Foldability = "Foldable" };
+                    await _connection.InsertAsync(currentLiabilitiesLine);
+
+                    var apLine = new ReportLine { ReportId = bsReport.Id, Name = "Accounts Payable", Code = "ap", Level = 3, Foldability = "Foldable" };
+                    await _connection.InsertAsync(apLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = apLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "201" });
+
+                    var vatLine = new ReportLine { ReportId = bsReport.Id, Name = "VAT Payable", Code = "vat_payable", Level = 3, Foldability = "Foldable" };
+                    await _connection.InsertAsync(vatLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = vatLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "220" });
+
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = currentLiabilitiesLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "ap+vat_payable" });
+
+                    var totalLiabilitiesLine = new ReportLine { ReportId = bsReport.Id, Name = "Total Liabilities", Code = "total_liabilities", Level = 1, Foldability = "Never Foldable" };
+                    await _connection.InsertAsync(totalLiabilitiesLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = totalLiabilitiesLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "liabilities_current" });
+
+                    // 3. Equity
+                    var equityLine = new ReportLine { ReportId = bsReport.Id, Name = "Equity", Code = "equity", Level = 1, Foldability = "Foldable" };
+                    await _connection.InsertAsync(equityLine);
+
+                    var retainedLine = new ReportLine { ReportId = bsReport.Id, Name = "Retained Earnings", Code = "retained_earnings", Level = 2, Foldability = "Foldable" };
+                    await _connection.InsertAsync(retainedLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = retainedLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "390,399" });
+
+                    var totalEquityLine = new ReportLine { ReportId = bsReport.Id, Name = "Total Equity", Code = "total_equity", Level = 1, Foldability = "Never Foldable" };
+                    await _connection.InsertAsync(totalEquityLine);
+                    await _connection.InsertAsync(new ReportLineComputation { ReportLineId = totalEquityLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "retained_earnings" });
+                }
+
+                // Seed Profit and Loss default configuration
+                var pnlReport = await _connection.Table<AccountingReport>().Where(r => r.Name == "Profit and Loss").FirstOrDefaultAsync();
+                if (pnlReport != null)
+                {
+                    var existingPnlLines = await _connection.Table<ReportLine>().Where(l => l.ReportId == pnlReport.Id).CountAsync();
+                    if (existingPnlLines == 0)
+                    {
+                        // 1. Operating profit
+                        var operatingProfitLine = new ReportLine { ReportId = pnlReport.Id, Name = "Operating profit", Code = "pnl_operating_profit", Level = 1, Foldability = "Foldable" };
+                        await _connection.InsertAsync(operatingProfitLine);
+
+                        var revenueLine = new ReportLine { ReportId = pnlReport.Id, Name = "Revenue", Code = "pnl_revenue", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(revenueLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = revenueLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "401,402" });
+
+                        var otherIncomeLine = new ReportLine { ReportId = pnlReport.Id, Name = "Other income", Code = "pnl_other_income", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(otherIncomeLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = otherIncomeLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "490" });
+
+                        var changeInvLine = new ReportLine { ReportId = pnlReport.Id, Name = "Change in inventories", Code = "pnl_change_in_inventories", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(changeInvLine);
+
+                        var cogsLine = new ReportLine { ReportId = pnlReport.Id, Name = "Costs of material", Code = "pnl_cogs", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(cogsLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = cogsLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "501" });
+
+                        var employeeLine = new ReportLine { ReportId = pnlReport.Id, Name = "Employee benefits expense", Code = "pnl_employee_benefits", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(employeeLine);
+
+                        var propLine = new ReportLine { ReportId = pnlReport.Id, Name = "Change in fair value of investment property", Code = "pnl_fair_value_property", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(propLine);
+
+                        var deprLine = new ReportLine { ReportId = pnlReport.Id, Name = "Depreciation, amortisation and impairment of non-financial assets", Code = "pnl_depreciation", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(deprLine);
+
+                        var impairmentLine = new ReportLine { ReportId = pnlReport.Id, Name = "Impairment losses of financial assets", Code = "pnl_impairment_financial", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(impairmentLine);
+
+                        var otherExpLine = new ReportLine { ReportId = pnlReport.Id, Name = "Other expenses", Code = "pnl_other_expenses", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(otherExpLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = otherExpLine.Id, Label = "balance", ComputationEngine = "Prefix of Account Codes", Formula = "511,520,590" });
+
+                        // Compute Operating profit
+                        await _connection.InsertAsync(new ReportLineComputation 
+                        { 
+                            ReportLineId = operatingProfitLine.Id, 
+                            Label = "balance", 
+                            ComputationEngine = "Sum of other lines", 
+                            Formula = "pnl_revenue+pnl_other_income+pnl_change_in_inventories-pnl_cogs-pnl_employee_benefits-pnl_fair_value_property-pnl_depreciation-pnl_impairment_financial-pnl_other_expenses" 
+                        });
+
+                        // 2. Profit before tax
+                        var profitBeforeTaxLine = new ReportLine { ReportId = pnlReport.Id, Name = "Profit before tax", Code = "pnl_profit_before_tax", Level = 1, Foldability = "Foldable" };
+                        await _connection.InsertAsync(profitBeforeTaxLine);
+
+                        var equityProfitLine = new ReportLine { ReportId = pnlReport.Id, Name = "Share of profit from equity accounted investments", Code = "pnl_equity_profit", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(equityProfitLine);
+
+                        var financeCostsLine = new ReportLine { ReportId = pnlReport.Id, Name = "Finance costs", Code = "pnl_finance_costs", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(financeCostsLine);
+
+                        var financeIncomeLine = new ReportLine { ReportId = pnlReport.Id, Name = "Finance income", Code = "pnl_finance_income", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(financeIncomeLine);
+
+                        var otherFinancialLine = new ReportLine { ReportId = pnlReport.Id, Name = "Other financial items", Code = "pnl_other_financial", Level = 2, Foldability = "Foldable" };
+                        await _connection.InsertAsync(otherFinancialLine);
+
+                        // Compute Profit before tax
+                        await _connection.InsertAsync(new ReportLineComputation 
+                        { 
+                            ReportLineId = profitBeforeTaxLine.Id, 
+                            Label = "balance", 
+                            ComputationEngine = "Sum of other lines", 
+                            Formula = "pnl_operating_profit+pnl_equity_profit-pnl_finance_costs+pnl_finance_income+pnl_other_financial" 
+                        });
+
+                        // 3. Tax expense
+                        var taxExpenseLine = new ReportLine { ReportId = pnlReport.Id, Name = "Tax expense", Code = "pnl_tax_expense", Level = 1, Foldability = "Foldable" };
+                        await _connection.InsertAsync(taxExpenseLine);
+
+                        // 4. Profit for the year from continuing operations
+                        var continuingOpsProfitLine = new ReportLine { ReportId = pnlReport.Id, Name = "Profit for the year from continuing operations", Code = "pnl_continuing_ops_profit", Level = 1, Foldability = "Foldable" };
+                        await _connection.InsertAsync(continuingOpsProfitLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = continuingOpsProfitLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "pnl_profit_before_tax-pnl_tax_expense" });
+
+                        // 5. Loss for the year from discontinued operations
+                        var discontinuedLossLine = new ReportLine { ReportId = pnlReport.Id, Name = "Loss for the year from discontinued operations", Code = "pnl_discontinued_ops_loss", Level = 1, Foldability = "Foldable" };
+                        await _connection.InsertAsync(discontinuedLossLine);
+
+                        // 6. Profit/Loss for the year
+                        var netProfitYearLine = new ReportLine { ReportId = pnlReport.Id, Name = "Profit/Loss for the year", Code = "pnl_net_profit_year", Level = 1, Foldability = "Never Foldable" };
+                        await _connection.InsertAsync(netProfitYearLine);
+                        await _connection.InsertAsync(new ReportLineComputation { ReportLineId = netProfitYearLine.Id, Label = "balance", ComputationEngine = "Sum of other lines", Formula = "pnl_continuing_ops_profit-pnl_discontinued_ops_loss" });
+                    }
+                }
             }
         }
 

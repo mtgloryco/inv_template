@@ -3,131 +3,452 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:helpers="using:InventoryManagementSystem.UI.Helpers"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="InventoryManagementSystem.UI.Views.InventoryView"
              x:DataType="vm:InventoryViewModel"
              x:Name="Root">
     
-    <SplitView IsPaneOpen="{Binding IsPaneOpen}"
-               DisplayMode="Overlay"
-               OpenPaneLength="400"
-               PaneBackground="{DynamicResource ContentBackgroundColor}">
-        
-        <SplitView.Pane>
-            <Border Padding="20">
+    <Grid>
+        <!-- Main Product List / Grid Content Layer -->
+        <Grid RowDefinitions="Auto, Auto, *" Margin="15">
+            <!-- Quick Actions Toolbar -->
+            <Border Grid.Row="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,0,0,12" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="Quick Actions:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Content="Purchasing Actions ▾" Background="#007ACC" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4">
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuItem Header="Requests for Quotation (RFQ)" Command="{Binding GoToRfqScreenCommand}"/>
+                                <MenuItem Header="Purchase Orders (PO)" Command="{Binding GoToPurchaseOrdersScreenCommand}"/>
+                                <MenuItem Header="Suppliers / Vendors" Command="{Binding GoToSuppliersScreenCommand}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Header / Toolbar -->
+            <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto" Margin="0,0,0,15">
+                <TextBox Text="{Binding SearchText}" Watermark="{Binding Language.Resources[Inv_SearchPlaceholder]}" Width="300" HorizontalAlignment="Left"/>
+                
+                <Button Grid.Column="1" Margin="0,0,10,0" 
+                        Content="{Binding Language.Resources[Inv_Import]}" 
+                        Command="{Binding ImportProductsCommand}" 
+                        IsEnabled="{Binding CanBulkImport}"
+                        ToolTip.Tip="{Binding BulkImportTooltip}"
+                        Background="{DynamicResource PageBackgroundColor}" />
+                        
+                <Button Grid.Column="2" Content="{Binding Language.Resources[Inv_NewProduct]}" Command="{Binding OpenAddProductPaneCommand}" Background="#2E7D32" Foreground="White"/>
+            </Grid>
+
+            <!-- Product List -->
+            <DataGrid Grid.Row="2" ItemsSource="{Binding Products}" 
+                      SelectedItem="{Binding SelectedProduct}"
+                      AutoGenerateColumns="False" 
+                      IsReadOnly="True" 
+                      CanUserSortColumns="True"
+                      GridLinesVisibility="All"
+                      BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" Background="{DynamicResource ContentBackgroundColor}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{Binding Language.Resources[Inv_SKU]}" Binding="{Binding SKU}" Width="100"/>
+                    <DataGridTextColumn Header="{Binding Language.Resources[Inv_ProductName]}" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="{Binding Language.Resources[Inv_Category]}" Binding="{Binding Category}" Width="120"/>
+                    <DataGridTextColumn Header="{Binding Language.Resources[Inv_Stock]}" Binding="{Binding StockQuantity}" Width="80"/>
+                    <DataGridTextColumn Header="{Binding Language.Resources[Inv_Unit]}" Binding="{Binding Unit}" Width="70"/>
+                    <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_SellingPrice]}" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock VerticalAlignment="Center" Margin="5,0,0,0">
+                                    <Run Text="{Binding Price, StringFormat='{}{0:N0}'}"/>
+                                    <Run Text="{Binding #Root.DataContext.CurrencySymbol}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_Actions]}" Width="190">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <Button Content="Stock" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenStockPaneCommand}" CommandParameter="{Binding .}" Background="#F57C00" Foreground="White" FontSize="10" Padding="6,3" CornerRadius="3"/>
+                                    <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenEditProductPaneCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="6,3" CornerRadius="3"/>
+                                    <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).DeleteProductCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="10" Padding="6,3" CornerRadius="3"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <!-- Main Modal Overlay for Add/Edit/Stock (Layer 1) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsPaneOpen}" ZIndex="10" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    MaxWidth="900"
+                    MinWidth="400"
+                    MinHeight="350"
+                    Width="600"
+                    Height="580"
+                    Padding="25"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    helpers:ResizableHelper.CanResize="True">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header -->
+                    <TextBlock Grid.Row="0" Text="{Binding PaneTitle}" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
+                    
+                    <!-- Scrollable Body -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="15">
+                            
+                            <!-- 1. Product Add/Edit Form -->
+                             <TabControl IsVisible="{Binding !IsStockMode}" Margin="0,5,0,0">
+                                 <TabItem Header="General Information">
+                                     <StackPanel Spacing="15" Margin="0,10,0,0">
+                                         <!-- Product Name -->
+                                         <StackPanel Spacing="5">
+                                             <TextBlock Text="Product Name" FontSize="12" FontWeight="SemiBold"/>
+                                             <TextBox Watermark="e.g. Premium Wireless Mouse" Text="{Binding CurrentProduct.Name}" />
+                                         </StackPanel>
+
+                                         <!-- SKU -->
+                                         <StackPanel Spacing="5">
+                                             <TextBlock Text="SKU / Barcode" FontSize="12" FontWeight="SemiBold"/>
+                                             <TextBox Watermark="e.g. SKU12345" Text="{Binding CurrentProduct.SKU}" />
+                                         </StackPanel>
+
+                                         <!-- Service Level Availability Checkboxes -->
+                                         <StackPanel Spacing="5">
+                                             <TextBlock Text="Services Availability" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                             <Grid ColumnDefinitions="*, *, *">
+                                                 <CheckBox Grid.Column="0" Content="Sales" IsChecked="{Binding CurrentProduct.CanBeSold}"/>
+                                                 <CheckBox Grid.Column="1" Content="Purchases" IsChecked="{Binding CurrentProduct.CanBePurchased}"/>
+                                                 <CheckBox Grid.Column="2" Content="Point of Sale" IsChecked="{Binding CurrentProduct.AvailableInPOS}"/>
+                                             </Grid>
+                                         </StackPanel>
+
+                                         <!-- Product Type & Tracking -->
+                                         <Grid ColumnDefinitions="*, 15, *">
+                                             <StackPanel Grid.Column="0" Spacing="5">
+                                                 <TextBlock Text="Product Type" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding ProductTypes}" SelectedItem="{Binding CurrentProduct.ProductType}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                             <StackPanel Grid.Column="2" Spacing="5">
+                                                 <TextBlock Text="Tracking" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding TrackingOptions}" SelectedItem="{Binding CurrentProduct.Tracking}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                         </Grid>
+
+                                         <!-- Invoicing Policy & Sales Tax -->
+                                         <Grid ColumnDefinitions="*, 15, *">
+                                             <StackPanel Grid.Column="0" Spacing="5">
+                                                 <TextBlock Text="Invoicing Policy" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding InvoicingPolicies}" SelectedItem="{Binding CurrentProduct.InvoicingPolicy}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                             <StackPanel Grid.Column="2" Spacing="5">
+                                                 <TextBlock Text="Sales Tax" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding SalesTaxes}" SelectedItem="{Binding SelectedSalesTax}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                         </Grid>
+
+                                         <!-- Sale Price & Unit of Measure -->
+                                         <Grid ColumnDefinitions="*, 15, *">
+                                             <StackPanel Grid.Column="0" Spacing="5">
+                                                 <TextBlock Text="Sale Price" FontSize="12" FontWeight="SemiBold"/>
+                                                 <TextBox Watermark="0.00" Text="{Binding CurrentProduct.Price}" />
+                                             </StackPanel>
+                                             <StackPanel Grid.Column="2" Spacing="5">
+                                                 <TextBlock Text="Unit of Measure" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding UnitOptions}" SelectedItem="{Binding SelectedUnitName}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                         </Grid>
+
+                                         <!-- Cost & Category -->
+                                         <Grid ColumnDefinitions="*, 15, *">
+                                             <StackPanel Grid.Column="0" Spacing="5">
+                                                 <TextBlock Text="Cost" FontSize="12" FontWeight="SemiBold"/>
+                                                 <TextBox Watermark="0.00" Text="{Binding CurrentProduct.Cost}" />
+                                             </StackPanel>
+                                             <StackPanel Grid.Column="2" Spacing="5">
+                                                 <TextBlock Text="Category" FontSize="12" FontWeight="SemiBold"/>
+                                                 <ComboBox ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding SelectedCategoryName}" HorizontalAlignment="Stretch"/>
+                                             </StackPanel>
+                                         </Grid>
+
+                                         <!-- Initial Stock (Only for new products) -->
+                                         <StackPanel Spacing="5" IsVisible="{Binding CurrentProduct.Id, Converter={x:Static ObjectConverters.IsNull}}">
+                                             <TextBlock Text="Initial Stock Quantity" FontSize="12" FontWeight="SemiBold"/>
+                                             <TextBox Watermark="0" Text="{Binding CurrentProduct.StockQuantity}"/>
+                                         </StackPanel>
+                                     </StackPanel>
+                                 </TabItem>
+
+                                 <TabItem Header="Accounting">
+                                     <StackPanel Spacing="15" Margin="0,10,0,0">
+                                         <!-- Cost and Revenue Title -->
+                                         <TextBlock Text="Cost and Revenue" FontSize="16" FontWeight="Bold" Margin="0,5,0,10" Foreground="#007ACC"/>
+
+                                         <!-- Income Account Search -->
+                                         <StackPanel Spacing="5">
+                                             <TextBlock Text="Income Account" FontSize="12" FontWeight="SemiBold"/>
+                                             <TextBox Watermark="Type to search income accounts..." Text="{Binding IncomeAccountSearchText, Mode=TwoWay}" />
+                                             <TextBlock Text="{Binding SelectedIncomeAccountName}" FontSize="11" Foreground="Gray" IsVisible="{Binding SelectedIncomeAccountName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                             <!-- Matching List Dropdown -->
+                                             <ListBox ItemsSource="{Binding MatchedIncomeAccounts}" Height="120" MaxHeight="150"
+                                                      IsVisible="{Binding IsIncomeAccountListVisible}" Background="{DynamicResource CardBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                 <ListBox.ItemTemplate>
+                                                     <DataTemplate>
+                                                         <Grid ColumnDefinitions="*, Auto">
+                                                             <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                                 <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
+                                                                 <TextBlock Text="-"/>
+                                                                 <TextBlock Text="{Binding Name}"/>
+                                                             </StackPanel>
+                                                             <Button Grid.Column="1" Content="Select" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).SelectIncomeAccountCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="5,2"/>
+                                                         </Grid>
+                                                     </DataTemplate>
+                                                 </ListBox.ItemTemplate>
+                                             </ListBox>
+                                         </StackPanel>
+
+                                         <!-- Expense Account Search -->
+                                         <StackPanel Spacing="5" Margin="0,15,0,0">
+                                             <TextBlock Text="Expense Account" FontSize="12" FontWeight="SemiBold"/>
+                                             <TextBox Watermark="Type to search expense accounts..." Text="{Binding ExpenseAccountSearchText, Mode=TwoWay}" />
+                                             <TextBlock Text="{Binding SelectedExpenseAccountName}" FontSize="11" Foreground="Gray" IsVisible="{Binding SelectedExpenseAccountName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                             <!-- Matching List Dropdown -->
+                                             <ListBox ItemsSource="{Binding MatchedExpenseAccounts}" Height="120" MaxHeight="150"
+                                                      IsVisible="{Binding IsExpenseAccountListVisible}" Background="{DynamicResource CardBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                 <ListBox.ItemTemplate>
+                                                     <DataTemplate>
+                                                         <Grid ColumnDefinitions="*, Auto">
+                                                             <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                                 <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
+                                                                 <TextBlock Text="-"/>
+                                                                 <TextBlock Text="{Binding Name}"/>
+                                                             </StackPanel>
+                                                             <Button Grid.Column="1" Content="Select" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).SelectExpenseAccountCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="5,2"/>
+                                                         </Grid>
+                                                     </DataTemplate>
+                                                 </ListBox.ItemTemplate>
+                                             </ListBox>
+                                         </StackPanel>
+                                     </StackPanel>
+                                 </TabItem>
+                             </TabControl>
+
+                            <!-- 2. Stock Adjustment Form -->
+                            <StackPanel Spacing="15" IsVisible="{Binding IsStockMode}">
+                                <TextBlock Text="{Binding Language.Resources[Inv_MovementType]}" FontSize="12" FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding MovementTypes}" SelectedItem="{Binding SelectedMovementType}" HorizontalAlignment="Stretch"/>
+                                
+                                <TextBlock Text="{Binding Language.Resources[Inv_Quantity]}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Watermark="{Binding Language.Resources[Inv_Quantity]}" Text="{Binding AdjustmentQuantity}" />
+
+                                <!-- Batch Financials -->
+                                <StackPanel IsVisible="{Binding IsMovementIn}" Spacing="5">
+                                    <TextBlock Text="{Binding Language.Resources[Inv_CostPerUnit]}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBox Watermark="{Binding Language.Resources[Inv_CostPerUnit]}" Text="{Binding AdjustmentCostPerUnit}" />
+                                </StackPanel>
+
+                                <StackPanel IsVisible="{Binding IsMovementOut}" Spacing="5">
+                                    <TextBlock Text="{Binding Language.Resources[Inv_SellingPrice]}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBox Watermark="{Binding Language.Resources[Inv_SellingPrice]}" Text="{Binding AdjustmentUnitPrice}" />
+                                </StackPanel>
+                                
+                                <TextBlock Text="{Binding Language.Resources[Inv_Reason]}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Watermark="{Binding Language.Resources[Inv_Reason]}" Text="{Binding AdjustmentReason}" />
+                            </StackPanel>
+
+                            <!-- Common Error Message -->
+                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding HasError}" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer buttons -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,20,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelPaneCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveProductCommand}" Classes="accent" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- UoM Search More Modal Overlay (Layer 2) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsUomSearchMoreModalOpen}" ZIndex="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="450"
+                    MaxHeight="500"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <Grid RowDefinitions="Auto, Auto, *, Auto">
+                    <TextBlock Grid.Row="0" Text="Units of Measure" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                    
+                    <Button Grid.Row="1" Content="Create New Unit" Command="{Binding OpenCreateUnitFromSearchMoreCommand}" Background="#2E7D32" Foreground="White" HorizontalAlignment="Right" Margin="0,0,0,10"/>
+                    
+                    <ScrollViewer Grid.Row="2" MaxHeight="300" Margin="0,0,0,10">
+                        <ListBox ItemsSource="{Binding AllProductUnits}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto, Auto" Margin="5">
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="{Binding Quantity, StringFormat='Qty Ratio: {0}'}" FontSize="11" Foreground="Gray"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" Content="Group POS" IsChecked="{Binding GroupInPOS}" IsEnabled="False" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="2" Content="Select" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).SelectUnitFromSearchMoreCommand}" CommandParameter="{Binding .}" FontSize="11" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                    
+                    <Button Grid.Row="3" Content="Close" Command="{Binding CancelSearchMoreCommand}" HorizontalAlignment="Right"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Create Unit Modal Overlay (Layer 3) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateUnitModalOpen}" ZIndex="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="{Binding PaneTitle}" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="Create New Unit" FontSize="16" FontWeight="Bold"/>
                     
-                    <!-- Product Form -->
-                    <StackPanel Spacing="15" IsVisible="{Binding !IsStockMode}">
-                        <TextBox Watermark="{Binding Language.Resources[Inv_ProductName]}" Text="{Binding CurrentProduct.Name}" />
-                        <TextBox Watermark="{Binding Language.Resources[Inv_SKU]}" Text="{Binding CurrentProduct.SKU}" />
-                        <TextBox Watermark="{Binding Language.Resources[Inv_Category]}" Text="{Binding CurrentProduct.Category}" />
-                        <TextBox Watermark="{Binding Language.Resources[Inv_Unit]}" Text="{Binding CurrentProduct.Unit}" />
-                        
-                        <!-- Price and Cost are now set only during Stock Actions -->
-                        
-                        <TextBox Watermark="{Binding Language.Resources[Inv_InitialStock]}" Text="{Binding CurrentProduct.StockQuantity}" IsEnabled="{Binding CurrentProduct.Id, Converter={x:Static ObjectConverters.IsNull}}"/>
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Unit Name" FontSize="12"/>
+                        <TextBox Watermark="e.g. Dozen" Text="{Binding NewUnitName}"/>
                     </StackPanel>
-
-                    <!-- Stock Adjustment Form -->
-                    <StackPanel Spacing="15" IsVisible="{Binding IsStockMode}">
-                        <TextBlock Text="{Binding Language.Resources[Inv_MovementType]}" FontSize="12"/>
-                        <ComboBox ItemsSource="{Binding MovementTypes}" SelectedItem="{Binding SelectedMovementType}" HorizontalAlignment="Stretch"/>
-                        
-                        <TextBlock Text="{Binding Language.Resources[Inv_Quantity]}" FontSize="12"/>
-                        <TextBox Watermark="{Binding Language.Resources[Inv_Quantity]}" Text="{Binding AdjustmentQuantity}" />
-
-                        <!-- Batch Financials -->
-                        <StackPanel IsVisible="{Binding IsMovementIn}" Spacing="5">
-                            <TextBlock Text="{Binding Language.Resources[Inv_CostPerUnit]}" FontSize="12"/>
-                            <TextBox Watermark="{Binding Language.Resources[Inv_CostPerUnit]}" Text="{Binding AdjustmentCostPerUnit}" />
-                        </StackPanel>
-
-                        <StackPanel IsVisible="{Binding IsMovementOut}" Spacing="5">
-                            <TextBlock Text="{Binding Language.Resources[Inv_SellingPrice]}" FontSize="12"/>
-                            <TextBox Watermark="{Binding Language.Resources[Inv_SellingPrice]}" Text="{Binding AdjustmentUnitPrice}" />
-                        </StackPanel>
-                        
-                        <TextBlock Text="{Binding Language.Resources[Inv_Reason]}" FontSize="12"/>
-                        <TextBox Watermark="{Binding Language.Resources[Inv_Reason]}" Text="{Binding AdjustmentReason}" />
-                    </StackPanel>
-
-                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding HasError}"/>
                     
-                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="{Binding Language.Resources[Inv_Cancel]}" Command="{Binding CancelPaneCommand}" />
-                        <Button Content="{Binding Language.Resources[Inv_Save]}" Classes="accent" Command="{Binding SaveProductCommand}" Background="#007ACC" Foreground="White" />
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Quantity Ratio" FontSize="12"/>
+                        <TextBox Watermark="1.0" Text="{Binding NewUnitQuantity}"/>
+                    </StackPanel>
+                    
+                    <CheckBox Content="Group products in POS" IsChecked="{Binding NewUnitGroupInPOS}"/>
+                    
+                    <TextBlock Text="{Binding NewUnitErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewUnitErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateUnitCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewUnitCommand}" Background="#007ACC" Foreground="White"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
-        </SplitView.Pane>
+        </Grid>
 
-        <SplitView.Content>
-            <Grid RowDefinitions="Auto, Auto, *">
-                <!-- Quick Actions Toolbar -->
-                <Border Grid.Row="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,0,0,12" Margin="0,0,10,12">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="Quick Actions:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <Button Content="Purchase Orders" Command="{Binding GoToPurchaseOrdersCommand}" Background="#007ACC" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Header / Toolbar -->
-                <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto" Margin="0,0,10,10">
-                    <TextBox Text="{Binding SearchText}" Watermark="{Binding Language.Resources[Inv_SearchPlaceholder]}" Width="300" HorizontalAlignment="Left"/>
+        <!-- Create Category Modal Overlay (Layer 4) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateCategoryModalOpen}" ZIndex="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Create New Category" FontSize="16" FontWeight="Bold"/>
                     
-                    <Button Grid.Column="1" Margin="0,0,10,0" 
-                            Content="{Binding Language.Resources[Inv_Import]}" 
-                            Command="{Binding ImportProductsCommand}" 
-                            IsEnabled="{Binding CanBulkImport}"
-                            ToolTip.Tip="{Binding BulkImportTooltip}"
-                            Background="{DynamicResource PageBackgroundColor}" />
-                            
-                    <Button Grid.Column="2" Content="{Binding Language.Resources[Inv_NewProduct]}" Command="{Binding OpenAddProductPaneCommand}" Background="#2E7D32" Foreground="White"/>
-                </Grid>
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Category Name" FontSize="12"/>
+                        <TextBox Watermark="e.g. Electronics" Text="{Binding NewCategoryName}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Description" FontSize="12"/>
+                        <TextBox Watermark="Category description" Text="{Binding NewCategoryDescription}" Height="60" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    
+                    <TextBlock Text="{Binding NewCategoryErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewCategoryErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateCategoryCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewCategoryCommand}" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
 
-                <!-- Product List -->
-                <DataGrid Grid.Row="2" ItemsSource="{Binding Products}" 
-                          SelectedItem="{Binding SelectedProduct}"
-                          AutoGenerateColumns="False" 
-                          IsReadOnly="True" 
-                          CanUserSortColumns="True"
-                          GridLinesVisibility="All"
-                          BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" Background="{DynamicResource ContentBackgroundColor}">
-                    <DataGrid.Columns>
-                        <!-- Removed ID Column -->
-                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_SKU]}" Binding="{Binding SKU}" Width="100"/>
-                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_ProductName]}" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Category]}" Binding="{Binding Category}" Width="100"/>
-                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Stock]}" Binding="{Binding StockQuantity}" Width="80"/>
-                        <DataGridTextColumn Header="{Binding Language.Resources[Inv_Unit]}" Binding="{Binding Unit}" Width="60"/>
-                        <!-- Price is roughly displayed here, but actual sale price is set per transaction -->
-                        <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_SellingPrice]}" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock VerticalAlignment="Center" Margin="5,0,0,0">
-                                        <Run Text="{Binding Price, StringFormat='{}{0:N0}'}"/>
-                                        <Run Text="{Binding #Root.DataContext.CurrencySymbol}"/>
-                                    </TextBlock>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+        <!-- Create Tax Modal Overlay (Layer 5) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateTaxModalOpen}" ZIndex="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="450"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <ScrollViewer MaxHeight="450">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="Create New Sales Tax" FontSize="16" FontWeight="Bold"/>
                         
-                        <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_Actions]}" Width="190">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <Button Content="Stock" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenStockPaneCommand}" CommandParameter="{Binding .}" Background="#F57C00" Foreground="White" FontSize="10" Padding="5,2"/>
-                                        <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenEditProductPaneCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="5,2"/>
-                                        <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).DeleteProductCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="10" Padding="5,2"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Grid>
-        </SplitView.Content>
-    </SplitView>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Tax Name" FontSize="12"/>
+                            <TextBox Watermark="e.g. VAT 15%" Text="{Binding NewTaxName}"/>
+                        </StackPanel>
+                        
+                        <Grid ColumnDefinitions="*, 15, *">
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Text="Amount" FontSize="12"/>
+                                <TextBox Watermark="0.00" Text="{Binding NewTaxAmount}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="5">
+                                <TextBlock Text="Computation" FontSize="12"/>
+                                <ComboBox ItemsSource="{Binding TaxComputationOptions}" SelectedItem="{Binding NewTaxComputation}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, 15, *">
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Text="Scope" FontSize="12"/>
+                                <ComboBox ItemsSource="{Binding TaxScopeOptions}" SelectedItem="{Binding NewTaxScope}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="5">
+                                <TextBlock Text="Included in Price" FontSize="12"/>
+                                <ComboBox ItemsSource="{Binding TaxIncludedOptions}" SelectedItem="{Binding NewTaxIncludedInPrice}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Label on Invoice" FontSize="12"/>
+                            <TextBox Watermark="e.g. VAT (15%)" Text="{Binding NewTaxLabelOnInvoice}"/>
+                        </StackPanel>
+                        
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Description" FontSize="12"/>
+                            <TextBox Watermark="Tax description" Text="{Binding NewTaxDescription}" Height="50" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="{Binding NewTaxErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewTaxErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                            <Button Content="Cancel" Command="{Binding CancelCreateTaxCommand}"/>
+                            <Button Content="Save" Command="{Binding SaveNewSalesTaxCommand}" Background="#007ACC" Foreground="White"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
 </UserControl>

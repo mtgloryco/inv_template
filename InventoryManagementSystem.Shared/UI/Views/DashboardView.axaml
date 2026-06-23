@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             xmlns:helpers="using:InventoryManagementSystem.UI.Helpers"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
              x:Class="InventoryManagementSystem.UI.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
@@ -201,7 +202,7 @@
 
         <!-- MODAL OVERLAY (Quick Actions) -->
         <Border Background="#44000000" IsVisible="{Binding IsModalOpen}">
-            <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" VerticalAlignment="Center" HorizontalAlignment="Center" Width="450" Padding="30" BoxShadow="0 10 40 0 #44000000">
+            <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" VerticalAlignment="Center" HorizontalAlignment="Center" MinWidth="350" MinHeight="300" Width="480" Height="550" Padding="30" BoxShadow="0 10 40 0 #44000000" helpers:ResizableHelper.CanResize="True">
                 <StackPanel Spacing="20">
                     <TextBlock Text="{Binding ModalTitle}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}"/>
                     <Separator Height="1" Background="{DynamicResource BorderColor}"/>

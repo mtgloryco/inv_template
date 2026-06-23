@@ -87,14 +87,15 @@ namespace InventoryManagementSystem.UI.ViewModels
         private async Task LoadProducts()
         {
             var all = await _inventoryService.GetAllProductsAsync();
+            var posProducts = all.Where(p => p.AvailableInPOS && p.CanBeSold).ToList();
             
             if (string.IsNullOrWhiteSpace(SearchText))
             {
-                AvailableProducts = new ObservableCollection<Product>(all);
+                AvailableProducts = new ObservableCollection<Product>(posProducts);
             }
             else
             {
-                var filtered = all.Where(p => 
+                var filtered = posProducts.Where(p => 
                     p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || 
                     (p.SKU != null && p.SKU.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
                 ).ToList();

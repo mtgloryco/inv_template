@@ -134,6 +134,11 @@ namespace InventoryManagementSystem.Services
                 await _databaseService.Connection.DeleteAsync(relation);
             }
         }
+
+        public async Task<Supplier?> GetSupplierByIdAsync(int supplierId)
+        {
+            return await _databaseService.Connection.FindAsync<Supplier>(supplierId);
+        }
     }
 }
 

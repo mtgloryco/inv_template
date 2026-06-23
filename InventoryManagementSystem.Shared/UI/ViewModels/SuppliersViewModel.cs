@@ -103,7 +103,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         private async Task LoadAllProductsAsync()
         {
             var list = await _inventoryService.GetAllProductsAsync();
-            Products = new ObservableCollection<Product>(list.OrderBy(p => p.Name));
+            var purchasable = list.Where(p => p.CanBePurchased).OrderBy(p => p.Name).ToList();
+            Products = new ObservableCollection<Product>(purchasable);
         }
 
         [RelayCommand]

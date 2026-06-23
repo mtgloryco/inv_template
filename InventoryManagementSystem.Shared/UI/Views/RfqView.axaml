@@ -1,0 +1,361 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             xmlns:helpers="using:InventoryManagementSystem.UI.Helpers"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650"
+             x:Class="InventoryManagementSystem.UI.Views.RfqView"
+             x:DataType="vm:RfqViewModel">
+    
+    <Grid>
+        <!-- Main RFQ list layout -->
+        <Grid RowDefinitions="Auto, Auto, *" Margin="15">
+            <!-- Header Toolbar -->
+            <Border Grid.Row="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,0,0,12" Margin="0,0,0,12">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="Back to Inventory" Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).GoToInventoryCommand}" Background="#007ACC" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4" />
+                        <TextBlock Text="Requests for Quotation" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Search & Actions -->
+            <Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                <TextBox Text="{Binding SearchText}" Watermark="Search RFQs by Reference or Supplier..." Width="350" HorizontalAlignment="Left"/>
+                <Button Grid.Column="1" Content="New RFQ" Command="{Binding OpenAddRfqCommand}" Background="#2E7D32" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4"/>
+            </Grid>
+
+            <!-- RFQs List -->
+            <DataGrid Grid.Row="2" ItemsSource="{Binding Rfqs}"
+                      SelectedItem="{Binding SelectedRfq}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      GridLinesVisibility="All"
+                      BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" Background="{DynamicResource ContentBackgroundColor}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Reference" Binding="{Binding PurchaseOrder.PONumber}" Width="130"/>
+                    <DataGridTextColumn Header="Vendor/Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                    <DataGridTextColumn Header="Company" Binding="{Binding PurchaseOrder.Company}" Width="150"/>
+                    <DataGridTextColumn Header="Buyer" Binding="{Binding PurchaseOrder.Buyer}" Width="120"/>
+                    <DataGridTemplateColumn Header="Total Amount" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock VerticalAlignment="Center" Margin="5,0,0,0">
+                                    <Run Text="{Binding PurchaseOrder.TotalAmount, StringFormat='{}{0:N2}'}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding PurchaseOrder.Currency}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Status" Binding="{Binding PurchaseOrder.Status}" Width="100"/>
+                    
+                    <DataGridTemplateColumn Header="Actions" Width="180">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <Button Content="Edit / Open" Command="{Binding $parent[UserControl].((vm:RfqViewModel)DataContext).OpenEditRfqCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="6,4" CornerRadius="3"/>
+                                    <Button Content="Print PDF" Command="{Binding $parent[UserControl].((vm:RfqViewModel)DataContext).PrintRfqCommand}" CommandParameter="{Binding .}" Background="#007ACC" Foreground="White" FontSize="10" Padding="6,4" CornerRadius="3"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <!-- Centered Edit/Create RFQ Modal Overlay (Layer 1) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsFormOpen}" ZIndex="10" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    MaxWidth="1180"
+                    MinWidth="800"
+                    MinHeight="500"
+                    Width="1100"
+                    Height="680"
+                    Margin="20"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="25"
+                    helpers:ResizableHelper.CanResize="True">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Title and Status -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Request for Quotation - " FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding CurrentRfq.PONumber}" FontSize="20" FontWeight="Bold" Foreground="#007ACC"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding CurrentRfq.Status}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Scrollable Body with Two-Column Form -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="20">
+                            <!-- Two Column Layout for Header Fields -->
+                            <Grid ColumnDefinitions="*, 25, *">
+                                <!-- Column 1 -->
+                                <StackPanel Grid.Column="0" Spacing="12">
+                                    <!-- Vendor Search Field -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Vendor/Supplier *" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBox Watermark="Type to search suppliers..." Text="{Binding VendorSearchText}"/>
+                                        
+                                        <!-- Inline Matched Suppliers List -->
+                                        <ListBox ItemsSource="{Binding MatchedSuppliers}" 
+                                                 IsVisible="{Binding MatchedSuppliers.Count}" 
+                                                 MaxHeight="100" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" CornerRadius="4">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="{Binding Name}" 
+                                                            Command="{Binding $parent[ListBox].((vm:RfqViewModel)DataContext).SelectSupplierCommand}" 
+                                                            CommandParameter="{Binding .}" 
+                                                            Background="Transparent" 
+                                                            HorizontalAlignment="Stretch" 
+                                                            HorizontalContentAlignment="Left"
+                                                            FontSize="12" Padding="6,2"/>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <Button Content="+ Create New Vendor" 
+                                                Command="{Binding OpenCreateSupplierCommand}" 
+                                                IsVisible="{Binding IsCreateSupplierButtonVisible}" 
+                                                Foreground="#007ACC" Background="Transparent" Padding="0,5" FontSize="12" FontWeight="SemiBold"/>
+                                    </StackPanel>
+
+                                    <!-- Currency Field -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Currency *" FontSize="12" FontWeight="SemiBold"/>
+                                        <ComboBox ItemsSource="{Binding Currencies}" SelectedItem="{Binding CurrentRfq.Currency}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <!-- Payment Terms Field -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Payment Terms" FontSize="12" FontWeight="SemiBold"/>
+                                        <ComboBox ItemsSource="{Binding PaymentTermsOptions}" SelectedItem="{Binding CurrentRfq.PaymentTerms}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Column 2 -->
+                                <StackPanel Grid.Column="2" Spacing="12">
+                                    <!-- Order Deadline -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Order Deadline *" FontSize="12" FontWeight="SemiBold"/>
+                                        <CalendarDatePicker SelectedDate="{Binding CurrentRfq.OrderDeadline}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <!-- Expected Arrival -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Expected Arrival" FontSize="12" FontWeight="SemiBold"/>
+                                        <CalendarDatePicker SelectedDate="{Binding CurrentRfq.ExpectedDeliveryDate}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <!-- Company -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Company" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBox Text="{Binding CurrentRfq.Company}" IsReadOnly="True" Background="#F0F0F0"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Buyer -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Buyer" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBox Text="{Binding CurrentRfq.Buyer}" IsReadOnly="True" Background="#F0F0F0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Products / Items List section -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Products / Order Lines" FontSize="14" FontWeight="Bold" Margin="0,10,0,0"/>
+                                
+                                <!-- Items List -->
+                                <Border BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" CornerRadius="4">
+                                    <StackPanel>
+                                        <!-- Table Header -->
+                                        <Border Background="{DynamicResource PageBackgroundColor}" Padding="8">
+                                            <Grid ColumnDefinitions="2*, *, *, *, Auto">
+                                                <TextBlock Grid.Column="0" Text="Product" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Grid.Column="1" Text="Quantity" FontWeight="SemiBold" FontSize="12" Margin="5,0"/>
+                                                <TextBlock Grid.Column="2" Text="Unit Cost" FontWeight="SemiBold" FontSize="12" Margin="5,0"/>
+                                                <TextBlock Grid.Column="3" Text="Tax (Purchase)" FontWeight="SemiBold" FontSize="12" Margin="5,0"/>
+                                                <TextBlock Grid.Column="4" Text="Subtotal" FontWeight="SemiBold" FontSize="12" Width="90" TextAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+                                        
+                                        <!-- Table Rows -->
+                                        <ItemsControl ItemsSource="{Binding RfqItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="8">
+                                                        <Grid ColumnDefinitions="2*, *, *, *, Auto">
+                                                            <!-- Product Search & Selection -->
+                                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                                <TextBox Watermark="Search product..." Text="{Binding ProductSearchText}"/>
+                                                                
+                                                                <ListBox ItemsSource="{Binding MatchedProducts}" 
+                                                                         IsVisible="{Binding !SelectedProduct}"
+                                                                         MaxHeight="120" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" CornerRadius="4">
+                                                                    <ListBox.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Button Content="{Binding Name}" 
+                                                                                    Command="{Binding $parent[ListBox].((vm:RfqItemRow)DataContext).SelectProductCommand}" 
+                                                                                    CommandParameter="{Binding .}" 
+                                                                                    Background="Transparent" 
+                                                                                    HorizontalAlignment="Stretch" 
+                                                                                    HorizontalContentAlignment="Left"
+                                                                                    FontSize="11" Padding="5,2"/>
+                                                                        </DataTemplate>
+                                                                    </ListBox.ItemTemplate>
+                                                                </ListBox>
+                                                                
+                                                                <Button Content="+ Create Product" 
+                                                                        Command="{Binding RequestCreateProduct}" 
+                                                                        IsVisible="{Binding !SelectedProduct}" 
+                                                                        Foreground="#007ACC" Background="Transparent" FontSize="10" Padding="0,2"/>
+                                                            </StackPanel>
+
+                                                            <!-- Quantity -->
+                                                            <TextBox Grid.Column="1" Text="{Binding Quantity}" Watermark="Quantity" Margin="5,0" VerticalAlignment="Top"/>
+
+                                                            <!-- Unit Cost -->
+                                                            <TextBox Grid.Column="2" Text="{Binding UnitCost}" Watermark="Cost" Margin="5,0" VerticalAlignment="Top"/>
+
+                                                            <!-- Purchase Tax -->
+                                                            <ComboBox Grid.Column="3" ItemsSource="{Binding $parent[UserControl].((vm:RfqViewModel)DataContext).PurchaseTaxes}" 
+                                                                      SelectedItem="{Binding SelectedTax}" DisplayMemberBinding="{Binding Name}" 
+                                                                      HorizontalAlignment="Stretch" Margin="5,0" VerticalAlignment="Top"/>
+
+                                                            <!-- Subtotal & Remove button -->
+                                                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+                                                                <TextBlock Text="{Binding TotalCost, StringFormat='{}{0:N2}'}" FontWeight="SemiBold" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                                <Button Content="✕" Command="{Binding $parent[UserControl].((vm:RfqViewModel)DataContext).RemoveItemRowCommand}" CommandParameter="{Binding .}" Foreground="Red" FontSize="12" CornerRadius="3" Padding="4,2"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <Button Content="Add Line" Command="{Binding AddItemRowCommand}" Background="#007ACC" Foreground="White" FontSize="12" Padding="10,5" CornerRadius="3" HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- Error Message -->
+                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer Action Buttons & Total -->
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="0,15,0,0" Margin="0,20,0,0">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <StackPanel Orientation="Vertical" Spacing="4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Sub Total:" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RfqSubtotalAmount, StringFormat='{}{0:N2}'}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRfq.Currency}" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding RfqTaxBreakdownText}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" MaxWidth="400"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                    <TextBlock Text="Total Amount:" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RfqTotalAmount, StringFormat='{}{0:N2}'}" FontSize="18" FontWeight="Bold" Foreground="#007ACC" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRfq.Currency}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                <Button Content="Cancel" Command="{Binding CancelFormCommand}"/>
+                                <Button Content="Preview PDF" Command="{Binding PreviewCurrentRfqPdfCommand}" Background="#007ACC" Foreground="White"/>
+                                <Button Content="Save Draft" Command="{Binding SaveRfqCommand}" Background="#F57C00" Foreground="White"/>
+                                <Button Content="Confirm Order" Command="{Binding ConfirmAsPurchaseOrderCommand}" Background="#2E7D32" Foreground="White" IsVisible="{Binding CurrentRfq.Id}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Sub-creation overlay: Create Vendor/Supplier (Layer 2) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateSupplierModalOpen}" ZIndex="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Create Supplier on the Fly" FontSize="16" FontWeight="Bold"/>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Supplier Name *" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierName}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Phone" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierPhone}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Email" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierEmail}"/>
+                    </StackPanel>
+                    
+                    <TextBlock Text="{Binding NewSupplierErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewSupplierErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateSupplierCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewSupplierCommand}" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Sub-creation overlay: Create Product (Layer 3) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateProductModalOpen}" ZIndex="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Create Product on the Fly" FontSize="16" FontWeight="Bold"/>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Product Name *" FontSize="12"/>
+                        <TextBox Text="{Binding NewProductName}"/>
+                    </StackPanel>
+                    
+                    <Grid ColumnDefinitions="*, 15, *">
+                        <StackPanel Grid.Column="0" Spacing="5">
+                            <TextBlock Text="Cost Price" FontSize="12"/>
+                            <TextBox Text="{Binding NewProductCost}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock Text="Sales Price" FontSize="12"/>
+                            <TextBox Text="{Binding NewProductPrice}"/>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <TextBlock Text="{Binding NewProductErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewProductErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateProductCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewProductCommand}" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

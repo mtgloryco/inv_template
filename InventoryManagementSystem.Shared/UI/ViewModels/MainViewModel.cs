@@ -29,6 +29,9 @@ public partial class MainViewModel : ViewModelBase
     private readonly CloudSyncService _cloudSyncService;
     private readonly DailyBriefingService _dailyBriefingService;
     private readonly TaxService _taxService;
+    private readonly AccountService _accountService;
+    private readonly JournalService _journalService;
+    private readonly AccountingReportService _accountingReportService;
 
     // Navigation Stack
     private readonly System.Collections.Generic.Stack<ViewModelBase> _navigationStack = new();
@@ -88,7 +91,10 @@ public partial class MainViewModel : ViewModelBase
         ReportingService reportingService,
         CloudSyncService cloudSyncService,
         DailyBriefingService dailyBriefingService,
-        TaxService taxService)
+        TaxService taxService,
+        AccountService accountService,
+        JournalService journalService,
+        AccountingReportService accountingReportService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -112,6 +118,9 @@ public partial class MainViewModel : ViewModelBase
         _cloudSyncService = cloudSyncService;
         _dailyBriefingService = dailyBriefingService;
         _taxService = taxService;
+        _accountService = accountService;
+        _journalService = journalService;
+        _accountingReportService = accountingReportService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -245,7 +254,31 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language, GoToPurchaseOrders));
+    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language, _taxService, _accountService, GoToRfq, GoToPurchaseOrders, GoToSuppliers));
+
+    [RelayCommand]
+    public void GoToRfq()
+    {
+        if (!_licenseService.CanAccessPurchaseOrders())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new RfqViewModel(_purchaseOrderService, _supplierService, _inventoryService, _taxService, _settingsService, Language));
+    }
+
+    [RelayCommand]
+    public void GoToPurchaseOrders()
+    {
+        if (!_licenseService.CanAccessPurchaseOrders())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new PurchaseOrdersViewModel(_purchaseOrderService, _supplierService, _inventoryService, _taxService, _settingsService, Language));
+    }
 
     [RelayCommand]
     public void GoToReports()
@@ -295,7 +328,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToSettings()
     {
-        NavigateTo(new SettingsViewModel(_settingsService, Language, _taxService));
+        NavigateTo(new SettingsViewModel(_settingsService, Language, _taxService, _accountService, _journalService, _accountingReportService));
     }
 
     [RelayCommand]
@@ -310,17 +343,7 @@ public partial class MainViewModel : ViewModelBase
         NavigateTo(new SuppliersViewModel(_supplierService, _inventoryService));
     }
 
-    [RelayCommand]
-    public void GoToPurchaseOrders()
-    {
-        if (!_licenseService.CanAccessPurchaseOrders())
-        {
-            GoToLicense();
-            return;
-        }
 
-        NavigateTo(new PurchaseOrdersViewModel(_purchaseOrderService));
-    }
 
     [RelayCommand]
     public void GoToForecasting()

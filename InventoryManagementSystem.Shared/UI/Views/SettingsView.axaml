@@ -43,6 +43,8 @@
                     Classes="tab-btn" Classes.active-tab="{Binding IsGeneralTabActive}" />
             <Button Content="Taxes Setup" Command="{Binding SelectTabCommand}" CommandParameter="Taxes"
                     Classes="tab-btn" Classes.active-tab="{Binding IsTaxesTabActive}" />
+            <Button Content="Accounting" Command="{Binding SelectTabCommand}" CommandParameter="Accounting"
+                    Classes="tab-btn" Classes.active-tab="{Binding IsAccountingTabActive}" />
         </StackPanel>
 
         <!-- Content Area -->
@@ -191,8 +193,597 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
+
+                    <!-- TAB 3: ACCOUNTING SETUP -->
+                    <Grid RowDefinitions="Auto, *" IsVisible="{Binding IsAccountingTabActive}" Margin="0,10,0,0">
+                        <!-- Top header row: sub-tab selector + context-sensitive create button -->
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,15">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                                <TextBlock Text="Accounting Setting:" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryColor}"/>
+                                <ComboBox ItemsSource="{Binding AccountingSubTabs}" SelectedItem="{Binding SelectedAccountingSubTab}" Width="220" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Panel Grid.Column="2">
+                                <Button Content="+ Create Account" Command="{Binding OpenAddAccountFormCommand}" Background="#007ACC" Foreground="White" Padding="15,8" FontWeight="SemiBold" CornerRadius="6" IsVisible="{Binding IsCreateAccountButtonVisible}" />
+                                <Button Content="+ Create Journal" Command="{Binding OpenAddJournalFormCommand}" Background="#007ACC" Foreground="White" Padding="15,8" FontWeight="SemiBold" CornerRadius="6" IsVisible="{Binding IsCreateJournalButtonVisible}" />
+                            </Panel>
+                        </Grid>
+
+                        <!-- Content area — all sub-tab panels share Grid Row 1 -->
+                        <Panel Grid.Row="1">
+
+                            <!-- ══ CHART OF ACCOUNTS ══ -->
+                            <Grid ColumnDefinitions="240, *" IsVisible="{Binding IsChartOfAccountsVisible}">
+                                <!-- Sidebar Groups -->
+                                <Border Grid.Column="0" Background="{DynamicResource PageBackgroundColor}" CornerRadius="12" Padding="10" Margin="0,0,15,0" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" VerticalAlignment="Top">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="Account Groups" FontSize="14" FontWeight="SemiBold" Margin="5,0,0,5" Foreground="Gray"/>
+                                        <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroupText}" Background="Transparent" BorderThickness="0">
+                                            <ListBox.Styles>
+                                                <Style Selector="ListBoxItem">
+                                                    <Setter Property="Padding" Value="12,10"/>
+                                                    <Setter Property="CornerRadius" Value="8"/>
+                                                    <Setter Property="Margin" Value="0,2"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </Style>
+                                            </ListBox.Styles>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Table & Search -->
+                                <Grid Grid.Column="1" RowDefinitions="Auto, *">
+                                    <TextBox Grid.Row="0" Text="{Binding AccountSearchQuery}" Watermark="Search by account code, name or type..." Margin="0,0,0,15" UseFloatingWatermark="False"/>
+                                    <DataGrid Grid.Row="1" ItemsSource="{Binding FilteredAccounts}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" MinHeight="350">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="100" />
+                                            <DataGridTextColumn Header="Account Name" Binding="{Binding Name}" Width="2*" />
+                                            <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="2*" />
+                                            <DataGridTemplateColumn Header="Payment Reconciliation" Width="180">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                            <TextBlock Text="Yes" IsVisible="{Binding PaymentReconciliation}" Foreground="#2E7D32" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="No" IsVisible="{Binding !PaymentReconciliation}" Foreground="Gray"/>
+                                                        </Panel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="100" />
+                                            <DataGridTemplateColumn Header="Status" Width="100">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                            <Button Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleAccountStatusCommand}" CommandParameter="{Binding .}" IsVisible="{Binding IsActive}" Background="#2E7D32" Foreground="White" Content="Active" FontSize="11" Padding="10,4" CornerRadius="4" Cursor="Hand" />
+                                                            <Button Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleAccountStatusCommand}" CommandParameter="{Binding .}" IsVisible="{Binding !IsActive}" Background="#D32F2F" Foreground="White" Content="Inactive" FontSize="11" Padding="10,4" CornerRadius="4" Cursor="Hand" />
+                                                        </Panel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Header="Actions" Width="140">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="5,0">
+                                                            <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditAccountFormCommand}" CommandParameter="{Binding .}" FontSize="11" Padding="6,3" />
+                                                            <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteAccountCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="11" Padding="6,3" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Add/Edit Account Form -->
+                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="20" CornerRadius="8" IsVisible="{Binding IsAccountFormVisible}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Spacing="15">
+                                        <TextBlock Text="Add / Edit Chart of Account" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
+                                        <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto" HorizontalAlignment="Stretch">
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Account Code *" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding NewAccountCode}" Watermark="e.g. 101000" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Account Name *" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding NewAccountName}" Watermark="e.g. Cash on Hand" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Account Type *" FontWeight="Medium" FontSize="12" />
+                                                <ComboBox ItemsSource="{Binding AccountTypeOptions}" SelectedItem="{Binding NewAccountType}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Default Taxes" FontWeight="Medium" FontSize="12" />
+                                                <ComboBox ItemsSource="{Binding AvailableTaxes}" SelectedItem="{Binding NewAccountSelectedTax}" HorizontalAlignment="Stretch">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Name}"/>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                                <TextBlock Text="Currency" FontWeight="Medium" FontSize="12" />
+                                                <ComboBox ItemsSource="{Binding CurrencyOptions}" SelectedItem="{Binding NewAccountCurrency}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                                <TextBlock Text="Description" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding NewAccountDescription}" Watermark="Optional description..." Height="75" AcceptsReturn="True" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="15,0,0,12" Spacing="10" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Active" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
+                                                <ToggleSwitch IsChecked="{Binding NewAccountIsActive}" OnContent="Active" OffContent="Inactive" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="3" Grid.Column="1" Margin="15,0,0,12" Spacing="10" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Payment Reconciliation" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
+                                                <ToggleSwitch IsChecked="{Binding NewAccountPaymentReconciliation}" OnContent="Enabled" OffContent="Disabled" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="{Binding AccountErrorMessage}" Foreground="#D32F2F" FontSize="12" Margin="0,5,0,0" IsVisible="{Binding AccountErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                            <Button Content="Cancel" Command="{Binding CloseAccountFormCommand}" Padding="15,8" />
+                                            <Button Content="Save Account" Command="{Binding SaveAccountCommand}" Background="#2E7D32" Foreground="White" Padding="15,8" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- ══ JOURNALS ══ -->
+                            <DataGrid ItemsSource="{Binding Journals}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" MinHeight="350" IsVisible="{Binding IsJournalsVisible}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Journal Name" Binding="{Binding Journal.Name}" Width="2*" />
+                                    <DataGridTextColumn Header="Type" Binding="{Binding Journal.Type}" Width="*" />
+                                    <DataGridTextColumn Header="Sequence Prefix" Binding="{Binding Journal.SequencePrefix}" Width="*" />
+                                    <DataGridTextColumn Header="Default Account" Binding="{Binding DefaultAccountDisplay}" Width="2*" />
+                                    <DataGridTemplateColumn Header="Actions" Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="5" Margin="5,0">
+                                                    <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditJournalFormCommand}" CommandParameter="{Binding .}" FontSize="11" Padding="6,3" />
+                                                    <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteJournalCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="11" Padding="6,3" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Add/Edit Journal Form -->
+                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="20" CornerRadius="8" IsVisible="{Binding IsJournalFormVisible}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Spacing="15">
+                                        <TextBlock Text="Add / Edit Journal" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
+
+                                        <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" HorizontalAlignment="Stretch">
+                                            <!-- Left column -->
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Journal Name *" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding JournalName}" Watermark="e.g. Sales, Bank" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Type" FontWeight="Medium" FontSize="12" />
+                                                <ComboBox ItemsSource="{Binding JournalTypeOptions}" SelectedItem="{Binding JournalType}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Sequence Prefix *" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding JournalSequencePrefix}" Watermark="e.g. INV, BILL, BNK1" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,15,12" Spacing="5">
+                                                <TextBlock Text="Currency" FontWeight="Medium" FontSize="12" />
+                                                <ComboBox ItemsSource="{Binding CurrencyOptions}" SelectedItem="{Binding JournalCurrency}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+
+                                            <!-- Right column -->
+                                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="15,0,0,12" Spacing="5">
+                                                <TextBlock Text="Default Account" FontWeight="Medium" FontSize="12" />
+                                                <TextBox Text="{Binding JournalAccountSearch}" Watermark="Type account code or name to search..." />
+                                                <!-- Search results dropdown -->
+                                                <Border IsVisible="{Binding IsJournalAccountResultsVisible}"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                                        CornerRadius="0,0,6,6" Background="{DynamicResource ContentBackgroundColor}"
+                                                        MaxHeight="200">
+                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                        <ItemsControl ItemsSource="{Binding JournalAccountResults}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                                                            Background="Transparent" CornerRadius="0" Padding="10,7"
+                                                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectJournalAccountCommand}"
+                                                                            CommandParameter="{Binding .}"
+                                                                            Cursor="Hand">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                            <TextBlock Text="{Binding Code}" FontSize="11" Foreground="Gray" VerticalAlignment="Center" MinWidth="60"/>
+                                                                            <TextBlock Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </ScrollViewer>
+                                                </Border>
+                                                <!-- Selected account badge -->
+                                                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding JournalDefaultAccount, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                    <Border Background="#10007ACC" CornerRadius="4" Padding="8,4">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Text="{Binding JournalDefaultAccount.Code}" FontSize="11" Foreground="#007ACC" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding JournalDefaultAccount.Name}" FontSize="11" Foreground="{DynamicResource TextPrimaryColor}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Button Content="✕" FontSize="10" Padding="4,2" VerticalAlignment="Center"
+                                                            Background="Transparent" Foreground="Gray" Cursor="Hand"
+                                                            Command="{Binding SelectJournalAccountCommand}" CommandParameter="{x:Null}" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Payment Communications card -->
+                                            <Border Grid.Row="1" Grid.Column="1" Grid.RowSpan="3" Margin="15,0,0,12"
+                                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Padding="15">
+                                                <StackPanel Spacing="12">
+                                                    <TextBlock Text="Payment Communications" FontWeight="SemiBold" FontSize="13" />
+
+                                                    <StackPanel Spacing="5">
+                                                        <TextBlock Text="Communication Type" FontWeight="Medium" FontSize="12" />
+                                                        <ComboBox ItemsSource="{Binding PaymentCommunicationTypeOptions}" SelectedItem="{Binding JournalPaymentCommunicationType}" HorizontalAlignment="Stretch" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Spacing="5">
+                                                        <TextBlock Text="Communication Standard" FontWeight="Medium" FontSize="12" />
+                                                        <TextBox Text="{Binding JournalPaymentCommunicationStandard}" Watermark="e.g. SEPA Credit Transfer" />
+                                                    </StackPanel>
+
+                                                    <!-- Contextual hint -->
+                                                    <Border Background="#10007ACC" CornerRadius="6" Padding="10">
+                                                        <StackPanel Spacing="4">
+                                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#007ACC">
+                                                                <TextBlock.Text>
+                                                                    <MultiBinding StringFormat="{}Mode: {0}">
+                                                                        <Binding Path="JournalPaymentCommunicationType"/>
+                                                                    </MultiBinding>
+                                                                </TextBlock.Text>
+                                                            </TextBlock>
+                                                            <TextBlock Text="Each invoice gets its own unique reference. Enables automatic 1-to-1 bank reconciliation." FontSize="11" Foreground="Gray" TextWrapping="Wrap"
+                                                                       IsVisible="{Binding JournalPaymentCommunicationType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+
+                                        <TextBlock Text="{Binding JournalErrorMessage}" Foreground="#D32F2F" FontSize="12" Margin="0,5,0,0" IsVisible="{Binding JournalErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                            <Button Content="Cancel" Command="{Binding CloseJournalFormCommand}" Padding="15,8" />
+                                            <Button Content="Save Journal" Command="{Binding SaveJournalCommand}" Background="#2E7D32" Foreground="White" Padding="15,8" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- ══ ACCOUNTING REPORTS ══ -->
+                            <Grid RowDefinitions="Auto, *" IsVisible="{Binding IsAccountingReportsVisible}">
+                                <DataGrid Grid.Row="1" ItemsSource="{Binding Reports}" AutoGenerateColumns="False" IsReadOnly="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" MinHeight="350">
+                                    <DataGrid.Columns>
+                                        <!-- Checkbox Column -->
+                                        <DataGridTemplateColumn Width="50">
+                                            <DataGridTemplateColumn.HeaderTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectAllReports, Mode=TwoWay}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.HeaderTemplate>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Report Name -->
+                                        <DataGridTemplateColumn Header="Report Name" Width="2*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="{Binding Report.Name}" FontSize="12" Padding="10,6" Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Foreground="#007ACC" Cursor="Hand" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).GoInsideReportCommand}" CommandParameter="{Binding .}">
+                                                        <Button.Styles>
+                                                            <Style Selector="Button:pointerover">
+                                                                <Setter Property="Foreground" Value="#005A9E"/>
+                                                                <Setter Property="Background" Value="Transparent"/>
+                                                            </Style>
+                                                        </Button.Styles>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Root Report -->
+                                        <DataGridTextColumn Header="Root Report" Binding="{Binding Report.RootReport}" FontSize="12" Width="*" IsReadOnly="True" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+
+                            <!-- ══ REPORT DETAILS VIEW (INSIDE REPORT) ══ -->
+                            <Grid RowDefinitions="Auto, *" IsVisible="{Binding IsReportDetailVisible}">
+                                <!-- Details Header -->
+                                <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,15">
+                                    <Button Grid.Column="0" Content="← Back to Reports" Command="{Binding GoBackToReportsListCommand}" Padding="12,8" FontSize="12" Background="Transparent" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="15,0,0,0">
+                                        <TextBlock Text="{Binding ReportDetailTitle}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Structure &amp; Balances Configuration" FontSize="12" Foreground="Gray" VerticalAlignment="Center" Margin="5,4,0,0"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Content="Refresh Balances" Command="{Binding LoadReportLinesAsyncCommand}" Background="#007ACC" Foreground="White" Padding="12,8" FontSize="12" FontWeight="SemiBold" CornerRadius="6" />
+                                </Grid>
+
+                                <!-- Hierarchical Lines Table -->
+                                <Grid Grid.Row="1" RowDefinitions="*, Auto">
+                                    <DataGrid Grid.Row="0" ItemsSource="{Binding ReportLines}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{DynamicResource BorderColor}" MinHeight="350">
+                                        <DataGrid.Columns>
+                                            <!-- Hierarchical Name -->
+                                            <DataGridTemplateColumn Header="Line Name" Width="2*">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="5,0">
+                                                            <Border Width="{Binding Indentation}"/>
+                                                            <TextBlock Text="▸ " Foreground="Gray" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                            <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <!-- Code -->
+                                            <DataGridTextColumn Header="Code" Binding="{Binding Code}" FontSize="12" Width="1.2*" />
+
+                                            <!-- Foldability -->
+                                            <DataGridTextColumn Header="Foldability" Binding="{Binding Foldability}" FontSize="12" Width="*" />
+
+                                            <!-- Preview Balance -->
+                                            <DataGridTemplateColumn Header="Preview Balance" Width="1.5*">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Balance, StringFormat={}{0:N0} RWF}" FontSize="12" FontWeight="Bold" Foreground="#007ACC" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <!-- Actions -->
+                                            <DataGridTemplateColumn Header="Actions" Width="140">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="5,0">
+                                                            <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditLineFormCommand}" CommandParameter="{Binding .}" FontSize="11" Padding="6,3" />
+                                                            <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteLineCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="11" Padding="6,3" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <!-- Add Line button link -->
+                                    <Button Grid.Row="1" Content="+ Add Line" Command="{Binding OpenAddLineFormCommand}" Background="Transparent" Foreground="#009688" Padding="10,8" Margin="0,10,0,0" BorderThickness="0" FontWeight="SemiBold" Cursor="Hand" HorizontalAlignment="Left">
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover">
+                                                <Setter Property="Foreground" Value="#00796B"/>
+                                                <Setter Property="Background" Value="#10009688"/>
+                                            </Style>
+                                        </Button.Styles>
+                                    </Button>
+                                </Grid>
+                             </Grid>
+
+                         </Panel>
+                    </Grid>
                 </Panel>
             </ScrollViewer>
         </Border>
+
+        <!-- Line Modal Overlay (Open: Lines) -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsLineFormVisible}" Background="#AA12131A" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ZIndex="100">
+            <Grid.Styles>
+                <!-- Force dark background and white text for textboxes inside modal even when focused/hovered -->
+                <Style Selector="TextBox">
+                    <Setter Property="Background" Value="#262A33"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#3A3F4C"/>
+                    <Setter Property="CaretBrush" Value="White"/>
+                    <Setter Property="SelectionBrush" Value="#007ACC"/>
+                </Style>
+                <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                    <Setter Property="Background" Value="#2E333D"/>
+                    <Setter Property="BorderBrush" Value="#007ACC"/>
+                </Style>
+                <Style Selector="TextBox:focus">
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+                <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                    <Setter Property="Background" Value="#2E333D"/>
+                    <Setter Property="BorderBrush" Value="#4A4F5C"/>
+                </Style>
+                <Style Selector="TextBox:pointerover">
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+
+                <!-- Style numeric updown internal textbox and buttons -->
+                <Style Selector="NumericUpDown">
+                    <Setter Property="Background" Value="#262A33"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#3A3F4C"/>
+                </Style>
+                <Style Selector="NumericUpDown /template/ TextBox">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+                <Style Selector="NumericUpDown Button">
+                    <Setter Property="Background" Value="#3A3F4C"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+
+                <!-- ComboBox styles -->
+                <Style Selector="ComboBox">
+                    <Setter Property="Background" Value="#262A33"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#3A3F4C"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                </Style>
+                <Style Selector="ComboBox:pointerover">
+                    <Setter Property="Background" Value="#2E333D"/>
+                    <Setter Property="BorderBrush" Value="#4A4F5C"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+                <Style Selector="ComboBox:focus">
+                    <Setter Property="Background" Value="#2E333D"/>
+                    <Setter Property="BorderBrush" Value="#007ACC"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+                <Style Selector="ComboBoxItem">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="#262A33"/>
+                </Style>
+                <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#007ACC"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+                <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#007ACC"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Style>
+            </Grid.Styles>
+
+            <Border Width="850" Background="#1D2026" BorderBrush="#303540" BorderThickness="1" CornerRadius="12" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="25" BoxShadow="0 8 24 0 #40000000">
+                <StackPanel Spacing="15">
+                    <!-- Modal Header -->
+                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Open: Lines" FontSize="13" Foreground="Gray" FontWeight="Medium" />
+                            <TextBox Text="{Binding LineName}" FontSize="24" FontWeight="Bold" Foreground="White" Background="Transparent" BorderThickness="0,0,0,1" BorderBrush="#40FFFFFF" Padding="0,2" Margin="0,5,0,0" Watermark="Line Name (e.g. Goodwill)" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+                            <Button Content="✕" Command="{Binding DiscardLineCommand}" Background="Transparent" Foreground="Gray" FontSize="14" Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Two Column Metadata fields -->
+                    <Grid ColumnDefinitions="*, *" Margin="0,10,0,15">
+                        <!-- Left Column -->
+                        <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,15,0">
+                            <!-- Action -->
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Action" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="Optional action trigger for interactive reporting." Cursor="Hand" />
+                                </StackPanel>
+                                <TextBox Text="{Binding LineAction}" Watermark="e.g. Action Name" Height="36"/>
+                            </StackPanel>
+
+                            <!-- Level -->
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Level" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="The nesting level in report hierarchy (e.g. Level 1 for Assets, Level 2 for Current Assets, Level 3 for Cash)" Cursor="Hand" />
+                                </StackPanel>
+                                <NumericUpDown Value="{Binding LineLevel}" Minimum="1" Maximum="10" Increment="1" Height="36"/>
+                            </StackPanel>
+
+                            <!-- Group By -->
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Group By" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="Field to group the accounts by inside the final report." Cursor="Hand" />
+                                </StackPanel>
+                                <TextBox Text="{Binding LineGroupBy}" Watermark="Use report's 'Group By'" Height="36"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right Column -->
+                        <StackPanel Grid.Column="1" Spacing="12" Margin="15,0,0,0">
+                            <!-- Code -->
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Code" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="A unique code representing this line in total lines sums computations formulas (e.g. assets_current)" Cursor="Hand" />
+                                </StackPanel>
+                                <TextBox Text="{Binding LineCode}" Watermark="e.g. rw_goodwill" Height="36"/>
+                            </StackPanel>
+
+                            <!-- Foldability -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Foldability" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding FoldabilityOptions}" SelectedItem="{Binding LineFoldability}" Height="36"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="25" Margin="0,15,0,0">
+                                <!-- Print On New Page -->
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <CheckBox IsChecked="{Binding LinePrintOnNewPage}" Foreground="White" />
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="Print On New Page" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="Forces a page break before printing this section." VerticalAlignment="Center" Cursor="Hand" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Hide if Zero -->
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <CheckBox IsChecked="{Binding LineHideIfZero}" Foreground="White" />
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="Hide if Zero" Foreground="#A0A5B5" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <TextBlock Text="?" Foreground="#007ACC" FontSize="12" FontWeight="Bold" ToolTip.Tip="If the balance evaluates to 0, this line won't show on the final printable statement." VerticalAlignment="Center" Cursor="Hand" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <Separator Height="1" Background="#303540" Margin="0,5" />
+
+                    <!-- Computations Grid -->
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Formula Computations Engine" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,0,0,5" />
+                        <Border BorderBrush="#303540" BorderThickness="1" CornerRadius="8" Background="#16181E" Padding="10">
+                            <StackPanel Spacing="8">
+                                <!-- Header Row -->
+                                <Grid ColumnDefinitions="120, 200, 220, *, Auto" Margin="5,0,5,5">
+                                    <TextBlock Grid.Column="0" Text="Label" Foreground="Gray" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="1" Text="Computation Engine" Foreground="Gray" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="2" Text="Formula" Foreground="Gray" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="3" Text="Subformula" Foreground="Gray" FontSize="11" FontWeight="Bold" />
+                                </Grid>
+                                
+                                <!-- Computations Rows -->
+                                <ItemsControl ItemsSource="{Binding LineComputations}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="120, 200, 220, *, Auto" Margin="0,4" VerticalAlignment="Center">
+                                                <TextBox Grid.Column="0" Text="{Binding Label}" Margin="0,0,5,0" Height="30" FontSize="12" />
+                                                <ComboBox Grid.Column="1" ItemsSource="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ComputationEngineOptions}" SelectedItem="{Binding ComputationEngine}" Margin="0,0,5,0" Height="30" FontSize="11" />
+                                                <TextBox Grid.Column="2" Text="{Binding Formula}" Watermark="e.g. 101,102\(1021) or assets" Margin="0,0,5,0" Height="30" FontSize="12" />
+                                                <TextBox Grid.Column="3" Text="{Binding Subformula}" Margin="0,0,5,0" Height="30" FontSize="12" />
+                                                <Button Grid.Column="4" Content="🗑" Foreground="#D32F2F" Background="Transparent" Width="30" Height="30" CornerRadius="4" Cursor="Hand" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveComputationRowCommand}" CommandParameter="{Binding .}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Add a line link -->
+                                <Button Content="Add a line" Command="{Binding AddComputationRowCommand}" Background="Transparent" Foreground="#009688" BorderThickness="0" FontSize="12" FontWeight="SemiBold" Cursor="Hand" HorizontalAlignment="Left" Margin="5,5,0,0">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover">
+                                            <Setter Property="Foreground" Value="#00796B"/>
+                                            <Setter Property="Background" Value="#10009688"/>
+                                        </Style>
+                                    </Button.Styles>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Save & Discard buttons at bottom -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left" Margin="0,15,0,0">
+                        <Button Content="Save" Command="{Binding SaveLineCommand}" Background="#7B1FA2" Foreground="White" Padding="25,8" FontWeight="SemiBold" CornerRadius="6" Cursor="Hand" />
+                        <Button Content="Discard" Command="{Binding DiscardLineCommand}" Background="#3A3F4C" Foreground="White" Padding="20,8" CornerRadius="6" Cursor="Hand" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

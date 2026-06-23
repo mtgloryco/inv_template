@@ -14,6 +14,17 @@ namespace InventoryManagementSystem.Domain
         public decimal Cost { get; set; }
         public int StockQuantity { get; set; }
         public string Category { get; set; } = "General";
+
+        // New properties for detailed workflow constraints
+        public bool CanBeSold { get; set; } = true;
+        public bool CanBePurchased { get; set; } = true;
+        public bool AvailableInPOS { get; set; } = false;
+        public string ProductType { get; set; } = "Good"; // Good, Service, Combo
+        public string InvoicingPolicy { get; set; } = "Ordered quantities"; // Ordered quantities, Delivered quantities
+        public string Tracking { get; set; } = "by quantity"; // by quantity, lots, by unique serial number
+        public int? SalesTaxId { get; set; }
+        public int? IncomeAccountId { get; set; }
+        public int? ExpenseAccountId { get; set; }
     }
 
     public class Category
@@ -122,7 +133,7 @@ namespace InventoryManagementSystem.Domain
         public int Id { get; set; }
         public string PONumber { get; set; } = string.Empty;
         public int SupplierId { get; set; }
-        public string Status { get; set; } = "Draft";
+        public string Status { get; set; } = "Draft"; // "Draft" (RFQ), "Approved" (PO), etc.
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public DateTime? ExpectedDeliveryDate { get; set; }
         public DateTime? ActualDeliveryDate { get; set; }
@@ -130,6 +141,18 @@ namespace InventoryManagementSystem.Domain
         public string CreatedByUsername { get; set; } = string.Empty;
         public string ApprovedByUsername { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
+
+        // New properties for RFQ / Purchasing flow
+        public string Currency { get; set; } = "USD";
+        public string PaymentTerms { get; set; } = "Immediate Payment";
+        public DateTime? OrderDeadline { get; set; }
+        public string Buyer { get; set; } = string.Empty;
+        public string Company { get; set; } = "My Company";
+
+        // New properties for Billing & Receipt status
+        public string BillingStatus { get; set; } = "Waiting Bill"; // "Waiting Bill", "Billed"
+        public string ReceiptStatus { get; set; } = "Pending"; // "Pending", "Received"
+        public bool IsArchived { get; set; } = false;
     }
 
     public class PurchaseOrderItem
@@ -140,8 +163,12 @@ namespace InventoryManagementSystem.Domain
         public int ProductId { get; set; }
         public int QuantityOrdered { get; set; }
         public int QuantityReceived { get; set; }
+        public int QuantityBilled { get; set; }
         public decimal UnitCost { get; set; }
         public decimal TotalCost => QuantityOrdered * UnitCost;
+        
+        // Associated Purchase tax
+        public int? TaxId { get; set; }
     }
 
     public class PurchaseOrderListItem
@@ -284,5 +311,119 @@ namespace InventoryManagementSystem.Domain
         public string Scope { get; set; } = "Goods"; // Goods, Services
         public string IncludedInPrice { get; set; } = "Exclude"; // Include, Exclude
         public bool IsActive { get; set; } = true;
+    }
+
+    public class ProductUnit
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public double Quantity { get; set; } = 1.0;
+        public bool GroupInPOS { get; set; } = false;
+    }
+
+    public class Account
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+
+        [Unique]
+        public string Code { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Type { get; set; } = string.Empty; // e.g. "Asset: Receivable", "Asset: Bank and Cash"
+
+        public int? DefaultTaxId { get; set; }
+
+        public string Currency { get; set; } = "RWF";
+
+        public bool IsActive { get; set; } = true;
+
+        public string Description { get; set; } = string.Empty;
+
+        public bool PaymentReconciliation { get; set; } = false;
+    }
+
+    public class Journal
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Type { get; set; } = "Miscellaneous"; // Sales, Purchase, Cash, Bank, Credit Card, Miscellaneous
+
+        public string SequencePrefix { get; set; } = string.Empty;
+
+        public int? DefaultAccountId { get; set; }
+
+        public string Currency { get; set; } = "RWF";
+
+        public string PaymentCommunicationType { get; set; } = "Based on Invoice"; // Based on Invoice, Based on Customer
+
+        public string PaymentCommunicationStandard { get; set; } = string.Empty;
+    }
+
+    public class JournalListItem
+    {
+        public Journal Journal { get; set; } = new();
+        public string DefaultAccountDisplay { get; set; } = string.Empty;
+    }
+
+    public class JournalEntry
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string EntryNumber { get; set; } = string.Empty;
+        public int JournalId { get; set; }
+        public DateTime Date { get; set; } = DateTime.Now;
+        public string Reference { get; set; } = string.Empty;
+        public string State { get; set; } = "Posted"; // Draft, Posted
+    }
+
+    public class JournalLine
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int JournalEntryId { get; set; }
+        public int AccountId { get; set; }
+        public int? ProductId { get; set; } // Track transaction per product
+        public string Label { get; set; } = string.Empty;
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+    }
+
+    public class AccountingReport
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string RootReport { get; set; } = string.Empty;
+    }
+
+    public class ReportLine
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int ReportId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
+        public int Level { get; set; } = 1;
+        public string Foldability { get; set; } = "Foldable"; // Foldable, Always Expanded, Never Foldable
+        public string GroupBy { get; set; } = "Use report's 'Group By'";
+        public bool PrintOnNewPage { get; set; } = false;
+        public bool HideIfZero { get; set; } = false;
+    }
+
+    public class ReportLineComputation
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int ReportLineId { get; set; }
+        public string Label { get; set; } = "balance";
+        public string ComputationEngine { get; set; } = "Prefix of Account Codes"; // Prefix of Account Codes, Sum of other lines, Custom SQL
+        public string Formula { get; set; } = string.Empty;
+        public string Subformula { get; set; } = string.Empty;
     }
 }

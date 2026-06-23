@@ -3,28 +3,560 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             xmlns:domain="clr-namespace:InventoryManagementSystem.Domain;assembly=InventoryManagementSystem.Shared"
+             xmlns:helpers="using:InventoryManagementSystem.UI.Helpers"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="InventoryManagementSystem.UI.Views.PurchaseOrdersView"
              x:DataType="vm:PurchaseOrdersViewModel">
-    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
-        <TextBlock Grid.Row="0" Text="Purchase Orders" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
+    <Grid>
+        <!-- Main Purchase Orders Screen -->
+        <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="20">
+            <!-- Header section with Title, Search and Create button -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto, Auto" Margin="0,0,0,16">
+                <TextBlock Grid.Column="0" Text="Purchase Orders" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+                
+                <!-- Search bar -->
+                <TextBox Grid.Column="2" Width="300" Watermark="Search by PO#, Vendor, Company..." 
+                         Text="{Binding SearchText, Mode=TwoWay}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                
+                <!-- New PO button -->
+                <Button Grid.Column="3" Content="New Purchase Order" Command="{Binding OpenCreateFormCommand}" 
+                        Background="#2E7D32" Foreground="White" Padding="12,8" CornerRadius="4" VerticalAlignment="Center"/>
+            </Grid>
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding PurchaseOrders}" AutoGenerateColumns="False" SelectedItem="{Binding SelectedPurchaseOrder}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="PO #" Binding="{Binding PurchaseOrder.PONumber}" Width="140"/>
-                <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding PurchaseOrder.Status}" Width="120"/>
-                <DataGridTextColumn Header="Order Date" Binding="{Binding PurchaseOrder.OrderDate}" Width="180"/>
-                <DataGridTextColumn Header="Amount" Binding="{Binding PurchaseOrder.TotalAmount}" Width="120"/>
-            </DataGrid.Columns>
-        </DataGrid>
+            <!-- Advanced Filters row -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto, 130, Auto, 160, Auto, 140, Auto, 140" Margin="0,0,0,16" VerticalAlignment="Center">
+                <!-- Archive filter -->
+                <TextBlock Grid.Column="0" Text="Show:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding ArchiveFilterOptions}" SelectedItem="{Binding ArchiveFilter}" HorizontalAlignment="Stretch" Margin="0,0,20,0"/>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-            <Button Content="Create Draft PO" Command="{Binding CreateQuickDraftCommand}" />
-            <Button Content="Approve" Command="{Binding ApprovePurchaseOrderCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
-            <Button Content="Mark Shipped" Command="{Binding MarkAsShippedCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
-            <Button Content="Cancel" Command="{Binding CancelPurchaseOrderCommand}" CommandParameter="{Binding SelectedPurchaseOrder}" />
-            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
-        </StackPanel>
+                <!-- Company filter -->
+                <TextBlock Grid.Column="2" Text="Company:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableCompanies}" SelectedItem="{Binding CompanyFilter}" HorizontalAlignment="Stretch" Margin="0,0,20,0"/>
+
+                <!-- Date range filters -->
+                <TextBlock Grid.Column="4" Text="From:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                <DatePicker Grid.Column="5" SelectedDate="{Binding FilterStartDate}" HorizontalAlignment="Stretch" Margin="0,0,20,0"/>
+
+                <TextBlock Grid.Column="6" Text="To:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                <DatePicker Grid.Column="7" SelectedDate="{Binding FilterEndDate}" HorizontalAlignment="Stretch"/>
+            </Grid>
+
+            <!-- Table/Grid of POs -->
+            <DataGrid Grid.Row="2" ItemsSource="{Binding PurchaseOrders}" AutoGenerateColumns="False" 
+                      SelectedItem="{Binding SelectedPurchaseOrder}" CanUserResizeColumns="True" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Reference" Binding="{Binding PurchaseOrder.PONumber}" Width="140"/>
+                    <DataGridTextColumn Header="Order Date" Binding="{Binding PurchaseOrder.OrderDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                    <DataGridTextColumn Header="Vendor" Binding="{Binding SupplierName}" Width="*"/>
+                    <DataGridTextColumn Header="Company" Binding="{Binding PurchaseOrder.Company}" Width="160"/>
+                    
+                    <DataGridTemplateColumn Header="Total" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock VerticalAlignment="Center" Margin="5,0,0,0" FontWeight="SemiBold">
+                                    <Run Text="{Binding PurchaseOrder.TotalAmount, StringFormat='{}{0:N2}'}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding PurchaseOrder.Currency}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Billing Status" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="4" Padding="8,4" Margin="5,0,0,0"
+                                        Tag="{Binding BillingStatusText}">
+                                    <Border.Styles>
+                                        <Style Selector="Border[Tag=Billed]">
+                                            <Setter Property="Background" Value="#2E7D32"/>
+                                        </Style>
+                                        <Style Selector="Border[Tag=Waiting Bill]">
+                                            <Setter Property="Background" Value="#EF6C00"/>
+                                        </Style>
+                                    </Border.Styles>
+                                    <TextBlock Text="{Binding BillingStatusText}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Expected Arrival" Width="140">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ExpectedArrivalText}" VerticalAlignment="Center" Margin="5,0,0,0" Tag="{Binding IsArrivalPassed}">
+                                    <TextBlock.Styles>
+                                        <Style Selector="TextBlock[Tag=True]">
+                                            <Setter Property="Foreground" Value="#FF5252"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Style>
+                                        <Style Selector="TextBlock[Tag=False]">
+                                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextColor}"/>
+                                        </Style>
+                                    </TextBlock.Styles>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Actions" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="Details" Command="{Binding $parent[UserControl].((vm:PurchaseOrdersViewModel)DataContext).OpenDetailsCommand}" 
+                                        CommandParameter="{Binding .}" FontSize="10" Padding="8,4" CornerRadius="3" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Bottom status panel -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#007ACC" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Centered Details Modal Overlay (Layer 1) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsDetailsOpen}" ZIndex="10" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    MaxWidth="1180"
+                    MinWidth="800"
+                    MinHeight="500"
+                    Width="1100"
+                    Height="680"
+                    Margin="20"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="25"
+                    helpers:ResizableHelper.CanResize="True">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Title and Status -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Purchase Order Details - " FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding DetailedPo.PONumber}" FontSize="20" FontWeight="Bold" Foreground="#007ACC"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <!-- Receipt badge -->
+                            <Border CornerRadius="4" Padding="6,2" Background="#007ACC">
+                                <TextBlock Text="{Binding DetailedPo.ReceiptStatus, StringFormat='Receipt: {0}'}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                            <!-- Billing badge -->
+                            <Border CornerRadius="4" Padding="6,2" Tag="{Binding DetailedPo.BillingStatus}">
+                                <Border.Styles>
+                                    <Style Selector="Border[Tag=Billed]">
+                                        <Setter Property="Background" Value="#2E7D32"/>
+                                    </Style>
+                                    <Style Selector="Border[Tag=Waiting Bill]">
+                                        <Setter Property="Background" Value="#EF6C00"/>
+                                    </Style>
+                                </Border.Styles>
+                                <TextBlock Text="{Binding DetailedPo.BillingStatus, StringFormat='Bill: {0}'}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Scrollable Body with Details -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="20">
+                            <!-- Two Column Layout for Header Fields -->
+                            <Grid ColumnDefinitions="*, 25, *">
+                                <!-- Left Column -->
+                                <StackPanel Grid.Column="0" Spacing="12">
+                                    <Grid ColumnDefinitions="120, *">
+                                        <TextBlock Grid.Column="0" Text="Vendor / Supplier:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedSupplier.Name}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="120, *">
+                                        <TextBlock Grid.Column="0" Text="Phone / Email:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DetailedSupplier.Phone}"/>
+                                            <TextBlock Text="|"/>
+                                            <TextBlock Text="{Binding DetailedSupplier.Email}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="120, *">
+                                        <TextBlock Grid.Column="0" Text="Company / Entity:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.Company}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="120, *">
+                                        <TextBlock Grid.Column="0" Text="Buyer / Creator:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.Buyer}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Right Column -->
+                                <StackPanel Grid.Column="2" Spacing="12">
+                                    <Grid ColumnDefinitions="140, *">
+                                        <TextBlock Grid.Column="0" Text="Order Date:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.OrderDate, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="140, *">
+                                        <TextBlock Grid.Column="0" Text="Expected Delivery:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.ExpectedDeliveryDate, StringFormat='{}{0:yyyy-MM-dd}'}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="140, *">
+                                        <TextBlock Grid.Column="0" Text="Payment Terms:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.PaymentTerms}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="140, *">
+                                        <TextBlock Grid.Column="0" Text="Currency:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DetailedPo.Currency}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Products Table -->
+                            <StackPanel Spacing="5" Margin="0,10,0,0">
+                                <TextBlock Text="Ordered Products" FontSize="14" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="4">
+                                    <DataGrid ItemsSource="{Binding DetailedItems}" AutoGenerateColumns="False" GridLinesVisibility="Horizontal" CanUserResizeColumns="True" Height="220">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Product Name" Binding="{Binding ProductName}" Width="*"/>
+                                            <DataGridTextColumn Header="Ordered Qty" Binding="{Binding QuantityOrdered}" Width="110"/>
+                                            <DataGridTextColumn Header="Received Qty" Binding="{Binding QuantityReceived}" Width="110"/>
+                                            <DataGridTextColumn Header="Billed Qty" Binding="{Binding QuantityBilled}" Width="110"/>
+                                            <DataGridTextColumn Header="Unit Price" Binding="{Binding UnitCost, StringFormat='{}{0:N2}'}" Width="110"/>
+                                            <DataGridTextColumn Header="Tax" Binding="{Binding TaxName}" Width="120"/>
+                                            <DataGridTextColumn Header="Total Cost" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="130"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Notes section -->
+                            <StackPanel Spacing="5" Margin="0,5,0,0">
+                                <TextBlock Text="Terms &amp; Notes" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding DetailedPo.Notes}" IsVisible="{Binding DetailedPo.Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" FontStyle="Italic" TextWrapping="Wrap"/>
+                                <TextBlock Text="No additional notes." IsVisible="{Binding DetailedPo.Notes, Converter={x:Static StringConverters.IsNullOrEmpty}}" FontStyle="Italic" Foreground="Gray"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer Action Buttons & Total -->
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="0,15,0,0" Margin="0,20,0,0">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <StackPanel Orientation="Vertical" Spacing="4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Sub Total:" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DetailedSubtotal, StringFormat='{}{0:N2}'}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DetailedPo.Currency}" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding DetailedTaxBreakdownText}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" MaxWidth="400"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                    <TextBlock Text="Total Amount:" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DetailedTotal, StringFormat='{}{0:N2}'}" FontSize="18" FontWeight="Bold" Foreground="#007ACC" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DetailedPo.Currency}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                <Button Content="Validate / Receive Goods" Command="{Binding ValidateReceiptCommand}" IsEnabled="{Binding CanValidate}" Background="#2E7D32" Foreground="White" Margin="5"/>
+                                <Button Content="Create Bill" Command="{Binding CreateBillCommand}" IsEnabled="{Binding CanCreateBill}" Background="#EF6C00" Foreground="White" Margin="5"/>
+                                <Button Content="Print PO (PDF)" Command="{Binding PrintDetailedPoPdfCommand}" Background="#007ACC" Foreground="White" Margin="5"/>
+                                <Button Content="Print Bill (PDF)" Command="{Binding PrintDetailedBillPdfCommand}" IsVisible="{Binding IsBilled}" Background="#2E7D32" Foreground="White" Margin="5"/>
+                                <Button Content="Cancel Order" Command="{Binding CancelDetailedPoCommand}" IsEnabled="{Binding CanCancelDetailedPo}" Background="#E53935" Foreground="White" Margin="5"/>
+                                <Button Content="{Binding ArchiveButtonText}" Command="{Binding ToggleArchiveDetailedPoCommand}" Background="#78909C" Foreground="White" Margin="5"/>
+                                <Button Content="Delete Order" Command="{Binding DeleteDetailedPoCommand}" Background="#D32F2F" Foreground="White" Margin="5"/>
+                                <Button Content="Close" Command="{Binding CloseDetailsCommand}" Margin="5"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Centered Creation Modal Overlay (Layer 1) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateOpen}" ZIndex="10" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    MaxWidth="1180"
+                    MinWidth="800"
+                    MinHeight="500"
+                    Width="1100"
+                    Height="680"
+                    Margin="20"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="25"
+                    helpers:ResizableHelper.CanResize="True">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Title -->
+                    <TextBlock Grid.Row="0" Text="Create New Purchase Order" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                    <!-- Scrollable Body with Two-Column Form -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="20">
+                            <!-- Two Column Layout for Header Fields -->
+                            <Grid ColumnDefinitions="*, 25, *">
+                                <!-- Left Column -->
+                                <StackPanel Grid.Column="0" Spacing="12">
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Vendor / Supplier *" FontSize="12" FontWeight="SemiBold"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <AutoCompleteBox Text="{Binding VendorSearchText, Mode=TwoWay}"
+                                                             ItemsSource="{Binding MatchedSuppliers}"
+                                                             FilterMode="None"
+                                                             Watermark="Type to search suppliers...">
+                                                <AutoCompleteBox.ItemTemplate>
+                                                    <DataTemplate DataType="domain:Supplier">
+                                                        <TextBlock Text="{Binding Name}"/>
+                                                    </DataTemplate>
+                                                </AutoCompleteBox.ItemTemplate>
+                                            </AutoCompleteBox>
+                                            <Button Grid.Column="1" Content="Add Vendor" Command="{Binding RequestCreateSupplierCommand}" 
+                                                    IsVisible="{Binding IsCreateSupplierButtonVisible}" Margin="5,0,0,0"/>
+                                        </Grid>
+                                        
+                                        <!-- Autocomplete popup helper list -->
+                                        <ListBox ItemsSource="{Binding MatchedSuppliers}" Height="80" 
+                                                 IsVisible="{Binding MatchedSuppliers.Count}" Background="{DynamicResource CardBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="domain:Supplier">
+                                                    <Grid ColumnDefinitions="*, Auto">
+                                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1" Content="Select" Command="{Binding $parent[UserControl].((vm:PurchaseOrdersViewModel)DataContext).SelectSupplierCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="5,2"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <TextBlock Text="{Binding SelectedSupplier.Name, StringFormat='Selected: {0}'}" Foreground="#2E7D32" FontWeight="SemiBold" IsVisible="{Binding SelectedSupplier, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Company / Entity Name *" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBox Text="{Binding NewPo.Company}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Buyer / Purchaser" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBox Text="{Binding NewPo.Buyer}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Right Column -->
+                                <StackPanel Grid.Column="2" Spacing="12">
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Order Currency" FontSize="12" FontWeight="SemiBold"/>
+                                        <ComboBox ItemsSource="{Binding Currencies}" SelectedItem="{Binding NewPo.Currency}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Payment Terms" FontSize="12" FontWeight="SemiBold"/>
+                                        <ComboBox ItemsSource="{Binding PaymentTermsOptions}" SelectedItem="{Binding NewPo.PaymentTerms}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="*, 15, *">
+                                        <StackPanel Grid.Column="0" Spacing="5">
+                                            <TextBlock Text="Order Deadline" FontSize="12" FontWeight="SemiBold"/>
+                                            <DatePicker SelectedDate="{Binding NewPoOrderDeadline}" HorizontalAlignment="Stretch"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="5">
+                                            <TextBlock Text="Expected Arrival" FontSize="12" FontWeight="SemiBold"/>
+                                            <DatePicker SelectedDate="{Binding NewPoExpectedDeliveryDate}" HorizontalAlignment="Stretch"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Products Grid -->
+                            <StackPanel Spacing="5" Margin="0,10,0,0">
+                                <TextBlock Text="Products Lines *" FontSize="14" FontWeight="Bold"/>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="4" Padding="10">
+                                    <StackPanel Spacing="10">
+                                        <!-- Header labels -->
+                                        <Grid ColumnDefinitions="*, 100, 110, 150, 120" Margin="5,0">
+                                            <TextBlock Grid.Column="0" Text="Product / Item Description" FontWeight="SemiBold" FontSize="12"/>
+                                            <TextBlock Grid.Column="1" Text="Qty" FontWeight="SemiBold" FontSize="12" TextAlignment="Right" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="2" Text="Unit Cost" FontWeight="SemiBold" FontSize="12" TextAlignment="Right" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="3" Text="Tax Selector" FontWeight="SemiBold" FontSize="12" Margin="5,0"/>
+                                            <TextBlock Grid.Column="4" Text="Subtotal" FontWeight="SemiBold" FontSize="12" TextAlignment="Right"/>
+                                        </Grid>
+                                        <Separator Background="{DynamicResource BorderColor}"/>
+
+                                        <!-- Rows Control -->
+                                        <ItemsControl ItemsSource="{Binding PoItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:PoItemRow">
+                                                    <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,5" Margin="0,2">
+                                                        <Grid ColumnDefinitions="*, 100, 110, 150, 120">
+                                                            <!-- Autocomplete product input -->
+                                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                                <Grid ColumnDefinitions="*, Auto">
+                                                                    <TextBox Text="{Binding ProductSearchText, Mode=TwoWay}" Watermark="Search product name..."/>
+                                                                    <Button Grid.Column="1" Content="Add Product" Command="{Binding RequestCreateProduct}" Margin="5,0,0,0" FontSize="10"/>
+                                                                </Grid>
+                                                                
+                                                                <!-- Helper List for Autocomplete Selection -->
+                                                                <ListBox ItemsSource="{Binding MatchedProducts}" Height="80" IsVisible="{Binding MatchedProducts.Count}"
+                                                                         Background="{DynamicResource CardBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                                    <ListBox.ItemTemplate>
+                                                                        <DataTemplate DataType="domain:Product">
+                                                                            <Grid ColumnDefinitions="*, Auto">
+                                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="11"/>
+                                                                                <Button Grid.Column="1" Content="Select" Command="{Binding $parent[ListBox].((vm:PoItemRow)DataContext).SelectProductCommand}" CommandParameter="{Binding .}" FontSize="9" Padding="4,2"/>
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ListBox.ItemTemplate>
+                                                                </ListBox>
+                                                            </StackPanel>
+
+                                                            <!-- Quantity input -->
+                                                            <TextBox Grid.Column="1" Text="{Binding Quantity}" HorizontalAlignment="Stretch" Margin="5,0" VerticalAlignment="Top" TextAlignment="Right"/>
+
+                                                            <!-- Unit cost input -->
+                                                            <TextBox Grid.Column="2" Text="{Binding UnitCost}" HorizontalAlignment="Stretch" Margin="5,0" VerticalAlignment="Top" TextAlignment="Right"/>
+
+                                                            <!-- Tax dropdown selector -->
+                                                            <ComboBox Grid.Column="3" ItemsSource="{Binding $parent[UserControl].((vm:PurchaseOrdersViewModel)DataContext).PurchaseTaxes}" 
+                                                                      SelectedItem="{Binding SelectedTax}"
+                                                                      HorizontalAlignment="Stretch" Margin="5,0" VerticalAlignment="Top">
+                                                                <ComboBox.ItemTemplate>
+                                                                    <DataTemplate DataType="domain:Tax">
+                                                                        <TextBlock Text="{Binding Name}"/>
+                                                                    </DataTemplate>
+                                                                </ComboBox.ItemTemplate>
+                                                            </ComboBox>
+
+                                                            <!-- Subtotal & Remove button -->
+                                                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" HorizontalAlignment="Right">
+                                                                <TextBlock Text="{Binding TotalCost, StringFormat='{}{0:N2}'}" FontWeight="SemiBold" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                                <Button Content="✕" Command="{Binding $parent[UserControl].((vm:PurchaseOrdersViewModel)DataContext).RemovePoItemRowCommand}" CommandParameter="{Binding .}" Foreground="Red" FontSize="12" CornerRadius="3" Padding="4,2"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <Button Content="Add Line" Command="{Binding AddPoItemRowCommand}" Background="#007ACC" Foreground="White" FontSize="12" Padding="10,5" CornerRadius="3" HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- Notes/Terms Box -->
+                            <StackPanel Spacing="5" Margin="0,5,0,0">
+                                <TextBlock Text="Terms &amp; Notes" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding NewPo.Notes}" Watermark="E.g. Delivery terms, packaging requirements..." Height="60" AcceptsReturn="True" TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <!-- Error Message -->
+                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer Action Buttons & Total -->
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="0,15,0,0" Margin="0,20,0,0">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <StackPanel Orientation="Vertical" Spacing="4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Sub Total:" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PoSubtotalAmount, StringFormat='{}{0:N2}'}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding NewPo.Currency}" FontSize="12" Foreground="Gray" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding PoTaxBreakdownText}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" MaxWidth="400"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                    <TextBlock Text="Total Amount:" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PoTotalAmount, StringFormat='{}{0:N2}'}" FontSize="18" FontWeight="Bold" Foreground="#2E7D32" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding NewPo.Currency}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                <Button Content="Cancel" Command="{Binding CancelCreateFormCommand}"/>
+                                <Button Content="Confirm &amp; Save Order" Command="{Binding ConfirmSaveOrderCommand}" Background="#2E7D32" Foreground="White"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Sub-creation overlay: Create Vendor/Supplier (Layer 2) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateSupplierModalOpen}" ZIndex="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Create Supplier on the Fly" FontSize="16" FontWeight="Bold"/>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Supplier Name *" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierName}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Phone" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierPhone}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Email" FontSize="12"/>
+                        <TextBox Text="{Binding NewSupplierEmail}"/>
+                    </StackPanel>
+                    
+                    <TextBlock Text="{Binding NewSupplierErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewSupplierErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateSupplierCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewSupplierCommand}" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Sub-creation overlay: Create Product (Layer 3) -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsCreateProductModalOpen}" ZIndex="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Create Product on the Fly" FontSize="16" FontWeight="Bold"/>
+                    
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Product Name *" FontSize="12"/>
+                        <TextBox Text="{Binding NewProductName}"/>
+                    </StackPanel>
+                    
+                    <Grid ColumnDefinitions="*, 15, *">
+                        <StackPanel Grid.Column="0" Spacing="5">
+                            <TextBlock Text="Cost Price" FontSize="12"/>
+                            <TextBox Text="{Binding NewProductCost}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock Text="Sales Price" FontSize="12"/>
+                            <TextBox Text="{Binding NewProductPrice}"/>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <TextBlock Text="{Binding NewProductErrorMessage}" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding NewProductErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Cancel" Command="{Binding CancelCreateProductCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveNewProductCommand}" Background="#007ACC" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>
