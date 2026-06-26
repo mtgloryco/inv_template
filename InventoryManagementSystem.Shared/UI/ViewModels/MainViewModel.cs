@@ -170,7 +170,7 @@ public partial class MainViewModel : ViewModelBase
         IsAdmin = UserSession.IsAdmin;
         
         // Start fresh on Dashboard, clearing any login/license history
-        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, GoToInventory, GoToReports, GoToPOS);
+        CurrentPage = new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, _salesOrderService, GoToInventory, GoToReports, GoToPOS);
         _navigationStack.Clear();
         CanGoBack = false;
         OnPropertyChanged(nameof(CanAccessPOS));
@@ -259,7 +259,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void GoToDashboard()
     {
-        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, GoToInventory, GoToReports, GoToPOS));
+        NavigateTo(new DashboardViewModel(_inventoryService, _licenseService, Language, _settingsService, _dailyBriefingService, _salesOrderService, GoToInventory, GoToReports, GoToPOS));
         SidebarGridLength = new Avalonia.Controls.GridLength(250);
     }
 

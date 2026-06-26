@@ -65,57 +65,152 @@
 
                 <!-- Financial Cards -->
                 <Grid ColumnDefinitions="*,15,*,15,*" RowDefinitions="Auto">
-                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="Total Revenue" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="#2E7D32" Margin="0,5,0,0">
-                                <Run Text="{Binding TotalRevenue, StringFormat={}{0:N0}}"/>
-                                <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="Total Profit" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <Panel>
-                                <TextBlock FontSize="28" FontWeight="Bold" Foreground="#007ACC" Margin="0,5,0,0" IsVisible="{Binding ShowFinancials}">
-                                    <Run Text="{Binding TotalProfit, StringFormat={}{0:N0}}"/>
-                                    <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
+                    <!-- Total Revenue Card -->
+                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#10B981" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="Total Revenue" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock FontSize="26" FontWeight="Bold" Foreground="#10B981" Margin="0,5,0,0">
+                                    <Run Text="{Binding TotalRevenue, StringFormat={}{0:N0}}"/>
+                                    <Run Text="{Binding CurrencySymbol}" FontSize="16"/>
                                 </TextBlock>
-                                <TextBlock Text="LOCKED" FontSize="24" FontWeight="Bold" Foreground="#CCC" Margin="0,5,0,0" IsVisible="{Binding HideFinancials}"/>
-                            </Panel>
-                        </StackPanel>
+                            </StackPanel>
+                        </Grid>
                     </Border>
-                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="Inventory Value" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="#F57C00" Margin="0,5,0,0">
-                                <Run Text="{Binding TotalInventoryValue, StringFormat={}{0:N0}}"/>
-                                <Run Text="{Binding CurrencySymbol}" FontSize="18"/>
-                            </TextBlock>
-                        </StackPanel>
+                    <!-- Total Profit Card -->
+                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#6366F1" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="Total Profit" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <Panel Margin="0,5,0,0">
+                                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#6366F1" IsVisible="{Binding ShowFinancials}">
+                                        <Run Text="{Binding TotalProfit, StringFormat={}{0:N0}}"/>
+                                        <Run Text="{Binding CurrencySymbol}" FontSize="16"/>
+                                    </TextBlock>
+                                    <TextBlock Text="LOCKED" FontSize="20" FontWeight="Bold" Foreground="#94A3B8" IsVisible="{Binding HideFinancials}"/>
+                                </Panel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <!-- Inventory Value Card -->
+                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#F59E0B" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="Inventory Value" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock FontSize="26" FontWeight="Bold" Foreground="#F59E0B" Margin="0,5,0,0">
+                                    <Run Text="{Binding TotalInventoryValue, StringFormat={}{0:N0}}"/>
+                                    <Run Text="{Binding CurrencySymbol}" FontSize="16"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
                     </Border>
                 </Grid>
 
                 <!-- Operational Cards -->
                 <Grid ColumnDefinitions="*,15,*,15,*" RowDefinitions="Auto">
-                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="Total Products" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <TextBlock Text="{Binding TotalProducts}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
+                    <!-- Total Products Card -->
+                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#3B82F6" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="Total Products" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding TotalProducts}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <!-- Low Stock Alerts Card -->
+                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#F43F5E" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="Low Stock Alerts" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding LowStockCount}" FontSize="26" FontWeight="Bold" Foreground="#F43F5E" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <!-- License Tier Card -->
+                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" BoxShadow="0 2 8 0 #0A000000">
+                        <Grid ColumnDefinitions="4, *">
+                            <Rectangle Grid.Column="0" Fill="#8B5CF6" VerticalAlignment="Stretch"/>
+                            <StackPanel Grid.Column="1" Margin="20,15">
+                                <TextBlock Text="License Tier" Foreground="{DynamicResource TextSecondaryColor}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding LicenseTypeDisplay}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding LicenseStatusDisplay}" Foreground="#10B981" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Analytics Graphs -->
+                <Grid ColumnDefinitions="*, 20, *" Margin="0,10,0,10">
+                    <!-- Column 0: Sales Trend Chart -->
+                    <Border Grid.Column="0" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Padding="20" BoxShadow="0 2 8 0 #0A000000">
+                        <StackPanel Spacing="15">
+                            <TextBlock Text="Sales Trends (Last 7 Days)" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}"/>
+                            <Grid Height="150" VerticalAlignment="Bottom">
+                                <ItemsControl ItemsSource="{Binding SalesTrendBars}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Rows="1" VerticalAlignment="Bottom"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:DashboardChartBar">
+                                            <Grid RowDefinitions="*, Auto" Margin="5,0" VerticalAlignment="Bottom">
+                                                <StackPanel Grid.Row="0" Spacing="4" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding ValueDisplay}" FontSize="9" FontWeight="SemiBold" Foreground="Gray" HorizontalAlignment="Center"/>
+                                                    <Border Height="{Binding BarHeight}" CornerRadius="4 4 0 0" Width="30" HorizontalAlignment="Center">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                <GradientStop Offset="0" Color="#4F46E5"/>
+                                                                <GradientStop Offset="1" Color="#818CF8"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Grid.Row="1" Text="{Binding Label}" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryColor}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="Low Stock Alerts" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <TextBlock Text="{Binding LowStockCount}" FontSize="28" FontWeight="Bold" Foreground="#FF5252" Margin="0,5,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="4" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" Padding="20" BoxShadow="0 4 10 0 #10000000">
-                        <StackPanel>
-                            <TextBlock Text="License Tier" Foreground="{DynamicResource TextSecondaryColor}" FontSize="14"/>
-                            <TextBlock Text="{Binding LicenseTypeDisplay}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryColor}" Margin="0,5,0,0"/>
-                            <TextBlock Text="{Binding LicenseStatusDisplay}" Foreground="#4CAF50" FontSize="12" Margin="0,5,0,0" TextWrapping="Wrap"/>
+
+                    <!-- Column 2: Top Stocks Chart -->
+                    <Border Grid.Column="2" Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Padding="20" BoxShadow="0 2 8 0 #0A000000">
+                        <StackPanel Spacing="15">
+                            <TextBlock Text="Top Product Stock Levels" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}"/>
+                            <Grid Height="150" VerticalAlignment="Bottom">
+                                <ItemsControl ItemsSource="{Binding StockLevelBars}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Rows="1" VerticalAlignment="Bottom"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:DashboardChartBar">
+                                            <Grid RowDefinitions="*, Auto" Margin="5,0" VerticalAlignment="Bottom">
+                                                <StackPanel Grid.Row="0" Spacing="4" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding ValueDisplay}" FontSize="9" FontWeight="SemiBold" Foreground="Gray" HorizontalAlignment="Center"/>
+                                                    <Border Height="{Binding BarHeight}" CornerRadius="4 4 0 0" Width="30" HorizontalAlignment="Center">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                <GradientStop Offset="0" Color="#10B981"/>
+                                                                <GradientStop Offset="1" Color="#34D399"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Grid.Row="1" Text="{Binding Label}" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryColor}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -162,40 +257,47 @@
                              </StackPanel>
                          </Button>
                     </StackPanel>
-                </StackPanel>
-
-            <!-- Recent Activity Table -->
+                          <!-- Recent Activity Table -->
             <StackPanel Spacing="10">
                 <TextBlock Text="{Binding Language.Resources[RecentMovements]}" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource TextPrimaryColor}"/>
-                    <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" BoxShadow="0 2 8 0 #08000000" ClipToBounds="True">
-                        <StackPanel>
-                            <Grid ColumnDefinitions="50,*,*,*,*,*" Background="{DynamicResource PageBackgroundColor}" Height="40">
-                                <TextBlock Text="#" FontWeight="SemiBold" VerticalAlignment="Center" Margin="15,0"/>
-                                <TextBlock Text="Product ID" Grid.Column="1" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="Type" Grid.Column="2" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="Qty" Grid.Column="3" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="User" Grid.Column="4" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="Date" Grid.Column="5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            </Grid>
-                            <ItemsControl ItemsSource="{Binding RecentMovements}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1">
-                                            <Grid ColumnDefinitions="50,*,*,*,*,*" Height="45" Background="Transparent">
-                                                <TextBlock Text="{Binding Id}" VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextSecondaryColor}"/>
-                                                <TextBlock Text="{Binding ProductId}" Grid.Column="1" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding MovementType}" Grid.Column="2" VerticalAlignment="Center" FontWeight="Medium"/>
-                                                <TextBlock Text="{Binding QuantityChanged}" Grid.Column="3" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Username}" Grid.Column="4" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryColor}"/>
-                                                <TextBlock Text="{Binding Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Grid.Column="5" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryColor}" FontSize="12"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <TextBlock Text="No recent movements found." IsVisible="{Binding !HasMovements}" HorizontalAlignment="Center" Margin="20" Foreground="#999"/>
-                        </StackPanel>
-                    </Border>
+                <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" BoxShadow="0 2 8 0 #0A000000" Padding="15">
+                    <Grid RowDefinitions="*, Auto">
+                        <DataGrid Grid.Row="0" ItemsSource="{Binding RecentMovementRows}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" Height="280" IsVisible="{Binding HasMovements}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding Id}" Width="60"/>
+                                <DataGridTextColumn Header="Product Name" Binding="{Binding ProductName}" Width="2*"/>
+                                <DataGridTemplateColumn Header="Type" Width="1.2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="{Binding MovementType}">
+                                                <Border.Styles>
+                                                    <Style Selector="Border[Tag=IN]">
+                                                        <Setter Property="Background" Value="#E6F4EA"/>
+                                                        <Setter Property="TextBlock.Foreground" Value="#137333"/>
+                                                    </Style>
+                                                    <Style Selector="Border[Tag=OUT]">
+                                                        <Setter Property="Background" Value="#FCE8E6"/>
+                                                        <Setter Property="TextBlock.Foreground" Value="#C5221F"/>
+                                                     </Style>
+                                                     <Style Selector="Border[Tag=ADJUST]">
+                                                         <Setter Property="Background" Value="#FEF7E0"/>
+                                                         <Setter Property="TextBlock.Foreground" Value="#B06000"/>
+                                                     </Style>
+                                                 </Border.Styles>
+                                                 <TextBlock Text="{Binding MovementType}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                             </Border>
+                                         </DataTemplate>
+                                     </DataGridTemplateColumn.CellTemplate>
+                                 </DataGridTemplateColumn>
+                                 <DataGridTextColumn Header="Qty" Binding="{Binding QuantityChanged}" Width="1*"/>
+                                 <DataGridTextColumn Header="User" Binding="{Binding Username}" Width="1.5*"/>
+                                 <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="2*"/>
+                             </DataGrid.Columns>
+                         </DataGrid>
+                         <TextBlock Grid.Row="1" Text="No recent movements found." IsVisible="{Binding !HasMovements}" HorizontalAlignment="Center" Margin="20" Foreground="#999"/>
+                     </Grid>
+                 </Border>
+             </StackPanel>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

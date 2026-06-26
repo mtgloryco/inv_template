@@ -25,6 +25,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly Action _goToReports;
         private readonly Action _goToPOS;
         private readonly DailyBriefingService _briefingService;
+        private readonly SalesOrderService _salesOrderService;
 
         [ObservableProperty] private int _totalProducts;
         [ObservableProperty] private int _lowStockCount;
@@ -36,6 +37,15 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<StockMovement> _recentMovements = new();
+
+        [ObservableProperty]
+        private ObservableCollection<DashboardRecentMovementRow> _recentMovementRows = new();
+
+        [ObservableProperty]
+        private ObservableCollection<DashboardChartBar> _salesTrendBars = new();
+
+        [ObservableProperty]
+        private ObservableCollection<DashboardChartBar> _stockLevelBars = new();
 
         [ObservableProperty]
         private string _welcomeMessage = "Welcome to IMS";
@@ -84,13 +94,14 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         private readonly SettingsService _settingsService;
 
-        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, SettingsService settingsService, DailyBriefingService briefingService, Action goToInventory, Action goToReports, Action goToPOS)
+        public DashboardViewModel(InventoryService inventoryService, LicenseService licenseService, LanguageService languageService, SettingsService settingsService, DailyBriefingService briefingService, SalesOrderService salesOrderService, Action goToInventory, Action goToReports, Action goToPOS)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
             Language = languageService;
             _settingsService = settingsService;
             _briefingService = briefingService;
+            _salesOrderService = salesOrderService;
             
             _goToInventory = goToInventory;
             _goToReports = goToReports;
@@ -183,6 +194,67 @@ namespace InventoryManagementSystem.UI.ViewModels
 
             var products = await _inventoryService.GetAllProductsAsync();
             AllProducts = new ObservableCollection<Product>(products);
+
+            var rows = movements.Select(m => {
+                var p = products.FirstOrDefault(prod => prod.Id == m.ProductId);
+                return new DashboardRecentMovementRow {
+                    Id = m.Id,
+                    ProductId = m.ProductId,
+                    ProductName = p?.Name ?? $"Product #{m.ProductId}",
+                    MovementType = m.MovementType,
+                    QuantityChanged = m.QuantityChanged,
+                    Username = m.Username,
+                    Date = m.Date
+                };
+            }).ToList();
+            RecentMovementRows = new ObservableCollection<DashboardRecentMovementRow>(rows);
+
+            // Calculate 7 Days Sales Trend
+            var allOrders = await _salesOrderService.GetAllSalesOrdersAsync();
+            var confirmedSales = allOrders.Where(o => o.SalesOrder.Status != "Draft" && o.SalesOrder.Status != "Cancelled").ToList();
+            
+            var trendBars = new List<DashboardChartBar>();
+            var today = DateTime.Today;
+            for (int i = 6; i >= 0; i--)
+            {
+                var targetDate = today.AddDays(-i);
+                var salesOnDay = confirmedSales.Where(o => o.SalesOrder.OrderDate.Date == targetDate).ToList();
+                decimal totalOnDay = salesOnDay.Sum(o => o.SalesOrder.TotalAmount);
+                
+                trendBars.Add(new DashboardChartBar
+                {
+                    Label = targetDate.ToString("ddd"), // Day name e.g. Mon
+                    Value = totalOnDay,
+                    ValueDisplay = totalOnDay.ToString("N0")
+                });
+            }
+            
+            double maxRevenue = (double)trendBars.Max(b => b.Value);
+            foreach (var bar in trendBars)
+            {
+                bar.BarHeight = maxRevenue > 0 ? (double)bar.Value / maxRevenue * 120 : 0;
+            }
+            SalesTrendBars = new ObservableCollection<DashboardChartBar>(trendBars);
+
+            // Calculate Top 5 Products Stock Levels
+            var topProducts = products.OrderByDescending(p => p.StockQuantity).Take(5).ToList();
+            var stockBars = new List<DashboardChartBar>();
+            foreach (var p in topProducts)
+            {
+                stockBars.Add(new DashboardChartBar
+                {
+                    Label = p.Name.Length > 10 ? p.Name.Substring(0, 10) + "..." : p.Name,
+                    Value = p.StockQuantity,
+                    ValueDisplay = p.StockQuantity.ToString()
+                });
+            }
+            
+            double maxStock = stockBars.Count > 0 ? stockBars.Max(b => (double)b.Value) : 0;
+            foreach (var bar in stockBars)
+            {
+                bar.BarHeight = maxStock > 0 ? (double)bar.Value / maxStock * 120 : 0;
+            }
+            StockLevelBars = new ObservableCollection<DashboardChartBar>(stockBars);
 
             // Load Daily Briefing
             Briefing.Clear();
@@ -402,5 +474,24 @@ namespace InventoryManagementSystem.UI.ViewModels
         [RelayCommand] public void GoToInventory() => _goToInventory?.Invoke();
         [RelayCommand] public void GoToReports() => _goToReports?.Invoke();
         [RelayCommand] public void GoToPOS() => _goToPOS?.Invoke();
+    }
+
+    public class DashboardRecentMovementRow
+    {
+        public int Id { get; set; }
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string MovementType { get; set; } = "IN";
+        public int QuantityChanged { get; set; }
+        public string Username { get; set; } = "System";
+        public DateTime Date { get; set; }
+    }
+
+    public class DashboardChartBar
+    {
+        public string Label { get; set; } = string.Empty;
+        public double BarHeight { get; set; }
+        public decimal Value { get; set; }
+        public string ValueDisplay { get; set; } = string.Empty;
     }
 }
