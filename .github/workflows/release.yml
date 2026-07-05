@@ -44,12 +44,12 @@ jobs:
             - name: Pack Release (Velopack)
               run: vpk pack -u "InventoryManagementSystem" -v "${{ env.VERSION }}" -p ./publish -e "InventoryManagementSystem.Desktop.exe"
 
-            - name: Upload Assets to Public Release Repo
+            - name: Upload Release Assets
               uses: softprops/action-gh-release@v1
               with:
+                  tag_name: ${{ github.event.release.tag_name }}
                   files: Releases/*
-                  repository: itbienvenu/Releases
-                  token: ${{ secrets.RELEASE_TOKEN }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
 
     build-linux:
         name: Build Linux
@@ -86,9 +86,9 @@ jobs:
             - name: Pack Release (Velopack)
               run: vpk pack -u "InventoryManagementSystem" -v "${{ env.VERSION }}" -p ./publish -e "InventoryManagementSystem.Desktop"
 
-            - name: Upload Assets to Public Release Repo
+            - name: Upload Release Assets
               uses: softprops/action-gh-release@v1
               with:
+                  tag_name: ${{ github.event.release.tag_name }}
                   files: Releases/*
-                  repository: itbienvenu/Releases
-                  token: ${{ secrets.RELEASE_TOKEN }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
