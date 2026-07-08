@@ -30,6 +30,23 @@
                     <Button Content="{Binding Language.Resources[License]}" Command="{Binding GoToLicenseCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                     <Button Content="{Binding Language.Resources[Settings]}" Command="{Binding GoToSettingsCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
                     <Button Content="{Binding UpdateStatusText}" Command="{Binding CheckForUpdatesCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>
+
+                    <Border Background="{DynamicResource ThemeControlLowBrush}" CornerRadius="6" Padding="10" IsVisible="{Binding CanAccessCloudSync}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Cloud Sync" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding SyncStatusText}" FontSize="11" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding LastSyncDisplay, StringFormat='Last sync: {0}'}" FontSize="10" Foreground="Gray"/>
+                            <TextBox Watermark="Cloud email" Text="{Binding CloudEmail}" IsEnabled="{Binding !IsSyncing}"/>
+                            <TextBox Watermark="Password" Text="{Binding CloudPassword}" PasswordChar="*" IsEnabled="{Binding !IsSyncing}"/>
+                            <TextBox Watermark="Organization" Text="{Binding CloudOrganizationName}" IsEnabled="{Binding !IsSyncing}"/>
+                            <Button Content="Connect / Register" Command="{Binding ConnectCloudCommand}" IsEnabled="{Binding !IsSyncing}" HorizontalAlignment="Stretch"/>
+                            <Button Content="Sync Now" Command="{Binding SyncNowCommand}" IsEnabled="{Binding !IsSyncing}" HorizontalAlignment="Stretch"/>
+                            <Grid ColumnDefinitions="*,*">
+                                <Button Content="Backup" Command="{Binding BackupToCloudCommand}" IsEnabled="{Binding !IsSyncing}" Margin="0,0,4,0"/>
+                                <Button Grid.Column="1" Content="Restore" Command="{Binding RestoreFromCloudCommand}" IsEnabled="{Binding !IsSyncing}" Margin="4,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                     
                     <StackPanel VerticalAlignment="Bottom" Margin="0,40,0,0" Spacing="10">
                         <Button Content="Toggle Theme" Command="{Binding ToggleThemeCommand}" HorizontalAlignment="Stretch" Background="Transparent" HorizontalContentAlignment="Left" Padding="10"/>

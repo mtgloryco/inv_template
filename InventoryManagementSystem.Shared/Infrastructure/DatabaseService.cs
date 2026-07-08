@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using InventoryManagementSystem.Domain;
 using SQLite;
@@ -11,7 +12,7 @@ namespace InventoryManagementSystem.Infrastructure
         private readonly string _databasePath;
         private readonly string _legacyDatabasePath;
         private SQLiteAsyncConnection _connection;
-        private const int CurrentDatabaseVersion = 1;
+        private const int CurrentDatabaseVersion = 2;
 
         public DatabaseService()
         {
@@ -85,6 +86,7 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<Bank>();
             await _connection.CreateTableAsync<BankAccount>();
             await _connection.CreateTableAsync<PosPaymentMethod>();
+            await _connection.CreateTableAsync<SyncState>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();
@@ -117,11 +119,92 @@ namespace InventoryManagementSystem.Infrastructure
 
             if (metaVersion < CurrentDatabaseVersion)
             {
-                // Future migrations will go here
-                // if (metaVersion < 2) { await MigrateToV2(); }
-                
-                // Update version after migrations
+                if (metaVersion < 2)
+                {
+                    await MigrateToV2Async();
+                }
+
                 await _connection.ExecuteAsync($"PRAGMA user_version = {CurrentDatabaseVersion}");
+            }
+        }
+
+        private async Task MigrateToV2Async()
+        {
+            var syncTables = new[]
+            {
+                "Product", "Category", "StockMovement", "Supplier", "SupplierProduct",
+                "PurchaseOrder", "PurchaseOrderItem", "SalesOrder", "SalesOrderItem",
+                "Tax", "Account", "Journal", "JournalEntry", "JournalLine",
+                "ProductBundle", "BillOfMaterial", "BillOfMaterialLine",
+                "ManufacturingOrder", "ManufacturingOrderLine",
+                "CustomerReturn", "SupplierReturn", "Location", "LocationStock", "StockTransfer"
+            };
+
+            foreach (var table in syncTables)
+            {
+                await AddColumnIfNotExistsAsync(table, "SyncId", "TEXT");
+                await AddColumnIfNotExistsAsync(table, "UpdatedAt", "TEXT");
+                await AddColumnIfNotExistsAsync(table, "IsDeleted", "INTEGER NOT NULL DEFAULT 0");
+            }
+
+            foreach (var table in syncTables)
+            {
+                await _connection.ExecuteAsync(
+                    $"UPDATE {table} SET SyncId = lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))) WHERE SyncId IS NULL OR SyncId = ''");
+                await _connection.ExecuteAsync(
+                    $"UPDATE {table} SET UpdatedAt = datetime('now') WHERE UpdatedAt IS NULL OR UpdatedAt = ''");
+            }
+        }
+
+        private async Task AddColumnIfNotExistsAsync(string table, string column, string definition)
+        {
+            var columns = await _connection.QueryAsync<TableColumnInfo>($"PRAGMA table_info({table})");
+            if (columns.All(c => !string.Equals(c.name, column, StringComparison.OrdinalIgnoreCase)))
+            {
+                await _connection.ExecuteAsync($"ALTER TABLE {table} ADD COLUMN {column} {definition}");
+            }
+        }
+
+        private class TableColumnInfo
+        {
+            public string name { get; set; } = string.Empty;
+        }
+
+        public string DatabasePath => _databasePath;
+
+        public async Task CheckpointWalAsync()
+        {
+            try
+            {
+                await _connection.ExecuteAsync("PRAGMA wal_checkpoint(FULL);");
+            }
+            catch
+            {
+                // Best effort before backup
+            }
+        }
+
+        public async Task CloseConnectionAsync()
+        {
+            var connection = _connection;
+            _connection = null!;
+            if (connection != null)
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        public async Task ReopenConnectionAsync()
+        {
+            if (_connection == null)
+            {
+                _connection = new SQLiteAsyncConnection(_databasePath);
+                try
+                {
+                    await _connection.ExecuteAsync("PRAGMA journal_mode = WAL;");
+                    await _connection.ExecuteAsync("PRAGMA synchronous = NORMAL;");
+                }
+                catch { }
             }
         }
 

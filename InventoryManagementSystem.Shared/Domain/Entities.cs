@@ -3,10 +3,13 @@ using SQLite;
 
 namespace InventoryManagementSystem.Domain
 {
-    public class Product
+    public class Product : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? SKU { get; set; }
         public string Unit { get; set; } = "Pcs";
@@ -27,18 +30,24 @@ namespace InventoryManagementSystem.Domain
         public int? ExpenseAccountId { get; set; }
     }
 
-    public class Category
+    public class Category : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
     }
 
-    public class StockMovement
+    public class StockMovement : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int ProductId { get; set; }
         public int QuantityChanged { get; set; }
         public string MovementType { get; set; } = "IN"; // IN, OUT, ADJUST
@@ -99,10 +108,13 @@ namespace InventoryManagementSystem.Domain
         public string Type { get; set; } = "Free"; // Free, Premium
     }
 
-    public class Supplier
+    public class Supplier : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string Name { get; set; } = string.Empty;
         public string ContactPerson { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
@@ -119,18 +131,24 @@ namespace InventoryManagementSystem.Domain
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 
-    public class SupplierProduct
+    public class SupplierProduct : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int SupplierId { get; set; }
         public int ProductId { get; set; }
     }
 
-    public class PurchaseOrder
+    public class PurchaseOrder : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string PONumber { get; set; } = string.Empty;
         public int SupplierId { get; set; }
         public string Status { get; set; } = "Draft"; // "Draft" (RFQ), "Approved" (PO), etc.
@@ -155,10 +173,13 @@ namespace InventoryManagementSystem.Domain
         public bool IsArchived { get; set; } = false;
     }
 
-    public class PurchaseOrderItem
+    public class PurchaseOrderItem : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int PurchaseOrderId { get; set; }
         public int ProductId { get; set; }
         public int QuantityOrdered { get; set; }
@@ -202,30 +223,39 @@ namespace InventoryManagementSystem.Domain
 
     // --- PHASE 2: MULTI-LOCATION ---
 
-    public class Location
+    public class Location : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = "Warehouse"; // Warehouse, Store, Vehicle, External
         public string Address { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
     }
 
-    public class LocationStock
+    public class LocationStock : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int LocationId { get; set; }
         public int ProductId { get; set; }
         public int Quantity { get; set; }
         public int ReorderPoint { get; set; }
     }
 
-    public class StockTransfer
+    public class StockTransfer : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int FromLocationId { get; set; }
         public int ToLocationId { get; set; }
         public int ProductId { get; set; }
@@ -240,10 +270,13 @@ namespace InventoryManagementSystem.Domain
     // --- PHASE 5: RETURNS & REFUNDS ---
     // (Adding these since they weren't found despite user's claim)
 
-    public class CustomerReturn
+    public class CustomerReturn : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string ReturnNumber { get; set; } = string.Empty;
         public int ProductId { get; set; }
         public int Quantity { get; set; }
@@ -256,10 +289,13 @@ namespace InventoryManagementSystem.Domain
         public string Resolution { get; set; } = "Restocked"; // Restocked, Returned to Supplier, Written Off
     }
 
-    public class SupplierReturn
+    public class SupplierReturn : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string ReturnNumber { get; set; } = string.Empty;
         public int SupplierId { get; set; }
         public int ProductId { get; set; }
@@ -274,10 +310,13 @@ namespace InventoryManagementSystem.Domain
 
     // --- PHASE 7: KITTING & BUNDLES ---
 
-    public class ProductBundle
+    public class ProductBundle : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int ParentProductId { get; set; }       // The bundle SKU
         public int ComponentProductId { get; set; }    // A component inside the bundle
         public int QuantityRequired { get; set; }      // How many of this component per bundle
@@ -299,10 +338,13 @@ namespace InventoryManagementSystem.Domain
         public string IpAddress { get; set; } = string.Empty;
     }
 
-    public class Tax
+    public class Tax : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Computation { get; set; } = "Percentage"; // Percentage, Fixed
         public decimal Amount { get; set; }
@@ -327,10 +369,13 @@ namespace InventoryManagementSystem.Domain
         public string ReferenceUnit { get; set; } = string.Empty;
     }
 
-    public class Account
+    public class Account : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
 
         [Unique]
         public string Code { get; set; } = string.Empty;
@@ -350,10 +395,13 @@ namespace InventoryManagementSystem.Domain
         public bool PaymentReconciliation { get; set; } = false;
     }
 
-    public class Journal
+    public class Journal : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
 
         public string Name { get; set; } = string.Empty;
 
@@ -389,10 +437,13 @@ namespace InventoryManagementSystem.Domain
         public string LinkedBankAccountNumber { get; set; } = string.Empty;
     }
 
-    public class JournalEntry
+    public class JournalEntry : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string EntryNumber { get; set; } = string.Empty;
         public int JournalId { get; set; }
         public DateTime Date { get; set; } = DateTime.Now;
@@ -400,10 +451,13 @@ namespace InventoryManagementSystem.Domain
         public string State { get; set; } = "Posted"; // Draft, Posted
     }
 
-    public class JournalLine
+    public class JournalLine : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int JournalEntryId { get; set; }
         public int AccountId { get; set; }
         public int? ProductId { get; set; } // Track transaction per product
@@ -445,10 +499,13 @@ namespace InventoryManagementSystem.Domain
         public string Subformula { get; set; } = string.Empty;
     }
 
-    public class SalesOrder
+    public class SalesOrder : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string SONumber { get; set; } = string.Empty;
         public int CustomerId { get; set; }
         public string Status { get; set; } = "Draft"; // "Draft" (Quotation), "Confirmed" (Sales Order), "Delivered", "Cancelled"
@@ -470,10 +527,13 @@ namespace InventoryManagementSystem.Domain
         public int? PosPaymentMethodId { get; set; }
     }
 
-    public class SalesOrderItem
+    public class SalesOrderItem : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int SalesOrderId { get; set; }
         public int ProductId { get; set; }
         public int QuantityOrdered { get; set; }
@@ -501,10 +561,13 @@ namespace InventoryManagementSystem.Domain
         public string Description { get; set; } = string.Empty;
     }
 
-    public class BillOfMaterial
+    public class BillOfMaterial : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int ProductId { get; set; }
         public double Quantity { get; set; } = 1.0;
         public string Reference { get; set; } = string.Empty;
@@ -512,10 +575,13 @@ namespace InventoryManagementSystem.Domain
         public string Company { get; set; } = "My Company";
     }
 
-    public class BillOfMaterialLine
+    public class BillOfMaterialLine : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int BillOfMaterialId { get; set; }
         public int ProductId { get; set; }
         public double Quantity { get; set; } = 1.0;
@@ -531,10 +597,13 @@ namespace InventoryManagementSystem.Domain
         public string Company => BillOfMaterial.Company;
     }
 
-    public class ManufacturingOrder
+    public class ManufacturingOrder : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public string MONumber { get; set; } = string.Empty;
         public int BomId { get; set; }
         public int ProductId { get; set; }
@@ -547,10 +616,13 @@ namespace InventoryManagementSystem.Domain
         public string Company { get; set; } = "My Company";
     }
 
-    public class ManufacturingOrderLine
+    public class ManufacturingOrderLine : ISyncableEntity
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
         public int ManufacturingOrderId { get; set; }
         public int ProductId { get; set; }
         public double ExpectedQuantity { get; set; }

@@ -23,7 +23,9 @@ namespace InventoryManagementSystem.Services
         // Product CRUD
         public async Task<List<Product>> GetAllProductsAsync()
         {
-            return await _databaseService.Connection.Table<Product>().ToListAsync();
+            return await _databaseService.Connection.Table<Product>()
+                .Where(p => !p.IsDeleted)
+                .ToListAsync();
         }
 
         public async Task<Product> GetProductByIdAsync(int id)
@@ -33,6 +35,7 @@ namespace InventoryManagementSystem.Services
 
         public async Task AddProductAsync(Product product)
         {
+            SyncMetadataHelper.Touch(product);
             var count = await GetTotalProductCountAsync();
             if (count >= _licenseService.GetMaxProductCount())
             {
@@ -66,6 +69,7 @@ namespace InventoryManagementSystem.Services
                         Date = DateTime.Now,
                         Username = "System"
                     };
+                    SyncMetadataHelper.Touch(movement);
                     conn.Insert(movement);
                 }
             });
@@ -140,12 +144,14 @@ namespace InventoryManagementSystem.Services
 
         public async Task UpdateProductAsync(Product product)
         {
+            SyncMetadataHelper.Touch(product);
             await _databaseService.Connection.UpdateAsync(product);
         }
 
         public async Task DeleteProductAsync(Product product)
         {
-            await _databaseService.Connection.DeleteAsync(product);
+            SyncMetadataHelper.MarkDeleted(product);
+            await _databaseService.Connection.UpdateAsync(product);
         }
 
         // Stock Movement
@@ -194,6 +200,7 @@ namespace InventoryManagementSystem.Services
                     }
                     
                     // We must update the product record now to save the Cost/Price changes
+                    SyncMetadataHelper.Touch(product);
                     conn.Update(product);
 
                     var batch = new PurchaseBatch
@@ -224,6 +231,7 @@ namespace InventoryManagementSystem.Services
                         Username = user,
                         UnitPrice = unitPrice ?? product.Price
                     };
+                    SyncMetadataHelper.Touch(movement);
                     conn.Insert(movement);
 
                     if (product.ProductType == "Good")
@@ -434,6 +442,7 @@ namespace InventoryManagementSystem.Services
                 if (newStock < 0) throw new InvalidOperationException("Negative stock detected.");
 
                 product.StockQuantity = newStock;
+                SyncMetadataHelper.Touch(product);
                 conn.Update(product);
 
                 if (type != "OUT")
@@ -447,6 +456,7 @@ namespace InventoryManagementSystem.Services
                         Date = DateTime.Now,
                         Username = user
                     };
+                    SyncMetadataHelper.Touch(movement);
                     conn.Insert(movement);
 
                     // Post Journal Entry for Adjustment/IN

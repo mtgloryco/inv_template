@@ -133,6 +133,7 @@ public partial class MainViewModel : ViewModelBase
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
+        _ = RefreshCloudSyncStatusAsync();
 
         // 1. Strict License Check: Lock app if status is not Active/Valid
         var status = _licenseService.CurrentLicense.Status;
@@ -186,8 +187,144 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAccessAudit));
         OnPropertyChanged(nameof(CanAccessAdvancedAnalytics));
         OnPropertyChanged(nameof(CanAccessAnalytics));
+        OnPropertyChanged(nameof(CanAccessCloudSync));
 
         OnPropertyChanged(nameof(SidebarGridLength));
+    }
+
+    private async Task RefreshCloudSyncStatusAsync()
+    {
+        if (!_licenseService.CanAccessCloudSync())
+        {
+            SyncStatusText = "Enterprise license required";
+            IsCloudConnected = false;
+            return;
+        }
+
+        var status = await _cloudSyncService.GetStatusAsync();
+        IsCloudConnected = status.IsAuthenticated;
+        SyncStatusText = status.StatusText;
+        LastSyncDisplay = status.LastSyncDate?.ToLocalTime().ToString("g") ?? "Never";
+        if (!string.IsNullOrWhiteSpace(status.OrganizationName))
+        {
+            CloudOrganizationName = status.OrganizationName;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ConnectCloud()
+    {
+        if (!_licenseService.CanAccessCloudSync())
+        {
+            GoToLicense();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CloudEmail) || string.IsNullOrWhiteSpace(CloudPassword))
+        {
+            SyncStatusText = "Enter cloud email and password";
+            return;
+        }
+
+        IsSyncing = true;
+        SyncStatusText = "Connecting...";
+        var result = await _cloudSyncService.ConfigureCloudLoginAsync(
+            CloudEmail.Trim(),
+            CloudPassword,
+            CloudOrganizationName,
+            register: false);
+
+        if (!result.Success)
+        {
+            result = await _cloudSyncService.ConfigureCloudLoginAsync(
+                CloudEmail.Trim(),
+                CloudPassword,
+                CloudOrganizationName,
+                register: false);
+        }
+
+        IsSyncing = false;
+
+        SyncStatusText = result.Message;
+        if (result.Success)
+        {
+            IsCloudConnected = true;
+            CloudPassword = string.Empty;
+        }
+
+        await RefreshCloudSyncStatusAsync();
+    }
+
+    [RelayCommand]
+    public async Task SyncNow()
+    {
+        if (!_licenseService.CanAccessCloudSync())
+        {
+            GoToLicense();
+            return;
+        }
+
+        if (!IsCloudConnected)
+        {
+            SyncStatusText = "Connect to cloud first";
+            return;
+        }
+
+        IsSyncing = true;
+        SyncStatusText = "Syncing...";
+        var user = UserSession.CurrentUser?.Username ?? "user";
+        var result = await _cloudSyncService.SyncNowAsync(user);
+        IsSyncing = false;
+        SyncStatusText = result.Message;
+        await RefreshCloudSyncStatusAsync();
+    }
+
+    [RelayCommand]
+    public async Task BackupToCloud()
+    {
+        if (!_licenseService.CanAccessCloudSync())
+        {
+            GoToLicense();
+            return;
+        }
+
+        if (!IsCloudConnected)
+        {
+            SyncStatusText = "Connect to cloud first";
+            return;
+        }
+
+        IsSyncing = true;
+        SyncStatusText = "Uploading backup...";
+        var user = UserSession.CurrentUser?.Username ?? "user";
+        var success = await _cloudSyncService.BackupToCloudAsync(user, string.Empty);
+        IsSyncing = false;
+        SyncStatusText = success ? "Backup uploaded" : "Backup failed";
+        await RefreshCloudSyncStatusAsync();
+    }
+
+    [RelayCommand]
+    public async Task RestoreFromCloud()
+    {
+        if (!_licenseService.CanAccessCloudSync())
+        {
+            GoToLicense();
+            return;
+        }
+
+        if (!IsCloudConnected)
+        {
+            SyncStatusText = "Connect to cloud first";
+            return;
+        }
+
+        IsSyncing = true;
+        SyncStatusText = "Restoring backup...";
+        var user = UserSession.CurrentUser?.Username ?? "user";
+        var success = await _cloudSyncService.RestoreFromCloudAsync(user, string.Empty);
+        IsSyncing = false;
+        SyncStatusText = success ? "Restore completed — restart recommended" : "Restore failed";
+        await RefreshCloudSyncStatusAsync();
     }
 
     [RelayCommand]
@@ -226,6 +363,28 @@ public partial class MainViewModel : ViewModelBase
     public bool CanAccessAdvancedAnalytics => _licenseService.CanAccessAdvancedAnalytics();
     public bool CanAccessAnalytics => _licenseService.CanAccessAnalytics();
     public bool CanAccessManufacturing => true;
+    public bool CanAccessCloudSync => _licenseService.CanAccessCloudSync();
+
+    [ObservableProperty]
+    private string _syncStatusText = "Cloud sync unavailable";
+
+    [ObservableProperty]
+    private bool _isSyncing;
+
+    [ObservableProperty]
+    private string _lastSyncDisplay = "Never";
+
+    [ObservableProperty]
+    private bool _isCloudConnected;
+
+    [ObservableProperty]
+    private string _cloudEmail = string.Empty;
+
+    [ObservableProperty]
+    private string _cloudPassword = string.Empty;
+
+    [ObservableProperty]
+    private string _cloudOrganizationName = "My Organization";
 
     private void NavigateTo(ViewModelBase newPage)
     {
