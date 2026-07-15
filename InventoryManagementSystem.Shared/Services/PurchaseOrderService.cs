@@ -12,11 +12,13 @@ namespace InventoryManagementSystem.Services
     {
         private readonly DatabaseService _databaseService;
         private readonly InventoryService _inventoryService;
+        private readonly AuditService? _auditService;
 
-        public PurchaseOrderService(DatabaseService databaseService, InventoryService inventoryService)
+        public PurchaseOrderService(DatabaseService databaseService, InventoryService inventoryService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
             _inventoryService = inventoryService;
+            _auditService = auditService;
         }
 
         public async Task CreatePurchaseOrderAsync(PurchaseOrder po, List<PurchaseOrderItem> items)
@@ -136,11 +138,16 @@ namespace InventoryManagementSystem.Services
             List<PurchaseReceiveLine> receivedItems,
             List<LandedCostInput>? landedCosts = null)
         {
+            var receivedAny = false;
+            string? poNumber = null;
+            decimal totalLandedCost = 0;
+
             await _databaseService.Connection.RunInTransactionAsync(conn =>
             {
                 var po = conn.Find<PurchaseOrder>(poId);
                 if (po == null || po.Status == "Cancelled" || po.Status == "Received") return;
 
+                poNumber = po.PONumber;
                 decimal totalExtendedCost = 0;
                 var pendingLines = new List<(PurchaseOrderItem item, Product product, int qty, BatchReceiveDetail? detail)>();
 
@@ -162,7 +169,7 @@ namespace InventoryManagementSystem.Services
                     pendingLines.Add((item, product, line.QuantityReceived, line.BatchDetail));
                 }
 
-                decimal totalLandedCost = landedCosts?.Sum(c => c.Amount) ?? 0;
+                totalLandedCost = landedCosts?.Sum(c => c.Amount) ?? 0;
                 if (landedCosts != null)
                 {
                     foreach (var cost in landedCosts.Where(c => c.Amount > 0))
@@ -177,6 +184,9 @@ namespace InventoryManagementSystem.Services
                         });
                     }
                 }
+
+                if (pendingLines.Count == 0) return;
+                receivedAny = true;
 
                 foreach (var (item, product, qty, detail) in pendingLines)
                 {
@@ -229,6 +239,15 @@ namespace InventoryManagementSystem.Services
                 }
                 conn.Update(po);
             });
+
+            if (_auditService != null && receivedAny)
+            {
+                var po = await _databaseService.Connection.FindAsync<PurchaseOrder>(poId);
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Receive", "PurchaseOrder", poId,
+                    new { PONumber = poNumber ?? po?.PONumber, po?.Status, TotalLandedCost = totalLandedCost, LandedCostReference = poNumber });
+            }
         }
 
         private static void PostPurchaseReceiptJournal(
@@ -417,6 +436,13 @@ namespace InventoryManagementSystem.Services
             {
                 item.QuantityBilled = item.QuantityReceived;
                 await _databaseService.Connection.UpdateAsync(item);
+            }
+
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Bill", "PurchaseOrder", poId, po);
             }
         }
 

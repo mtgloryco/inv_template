@@ -13,7 +13,7 @@ namespace InventoryManagementSystem.Infrastructure
         private readonly string _databasePath;
         private readonly string _legacyDatabasePath;
         private SQLiteAsyncConnection _connection;
-        private const int CurrentDatabaseVersion = 6;
+        private const int CurrentDatabaseVersion = 7;
 
         public DatabaseService()
         {
@@ -119,6 +119,19 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<LandedCostCharge>();
             await _connection.CreateTableAsync<CycleCount>();
             await _connection.CreateTableAsync<CycleCountLine>();
+            await _connection.CreateTableAsync<WebhookEndpoint>();
+            await _connection.CreateTableAsync<WebhookDeliveryLog>();
+            await _connection.CreateTableAsync<NotificationOutbox>();
+            await _connection.CreateTableAsync<SyncConflictLog>();
+            await _connection.CreateTableAsync<CompanyBranch>();
+            await _connection.CreateTableAsync<ApprovalRequest>();
+            await _connection.CreateTableAsync<WorkCenter>();
+            await _connection.CreateTableAsync<MrpPlannedOrder>();
+            await _connection.CreateTableAsync<CrmOpportunity>();
+            await _connection.CreateTableAsync<MobileDeviceRegistration>();
+            await _connection.CreateTableAsync<MobileSyncQueue>();
+            await _connection.CreateTableAsync<SecurityPolicy>();
+            await _connection.CreateTableAsync<BackupSlaLog>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();
@@ -174,6 +187,11 @@ namespace InventoryManagementSystem.Infrastructure
                 if (metaVersion < 6)
                 {
                     await MigrateToV6Async();
+                }
+
+                if (metaVersion < 7)
+                {
+                    await MigrateToV7Async();
                 }
 
                 await _connection.ExecuteAsync($"PRAGMA user_version = {CurrentDatabaseVersion}");
@@ -276,6 +294,11 @@ namespace InventoryManagementSystem.Infrastructure
             await AddColumnIfNotExistsAsync("BillOfMaterial", "YieldPercent", "REAL NOT NULL DEFAULT 100");
             await AddColumnIfNotExistsAsync("BillOfMaterial", "ScrapPercent", "REAL NOT NULL DEFAULT 0");
             await AddColumnIfNotExistsAsync("BillOfMaterialLine", "ScrapPercent", "REAL NOT NULL DEFAULT 0");
+        }
+
+        private async Task MigrateToV7Async()
+        {
+            await AddColumnIfNotExistsAsync("Location", "BranchId", "INTEGER NOT NULL DEFAULT 0");
         }
 
         private async Task MigrateToV5Async()
@@ -387,6 +410,43 @@ namespace InventoryManagementSystem.Infrastructure
                         Quantity = product.StockQuantity
                     });
                 }
+            }
+
+            var branchCount = await _connection.Table<CompanyBranch>().CountAsync();
+            if (branchCount == 0)
+            {
+                var hq = new CompanyBranch
+                {
+                    Name = "Head Office",
+                    Code = "HQ",
+                    Currency = defaultCurrency,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _connection.InsertAsync(hq);
+
+                var locations = await _connection.Table<Location>().ToListAsync();
+                foreach (var location in locations.Where(l => l.BranchId == 0))
+                {
+                    location.BranchId = hq.Id;
+                    location.UpdatedAt = DateTime.UtcNow;
+                    await _connection.UpdateAsync(location);
+                }
+            }
+
+            var securityPolicyCount = await _connection.Table<SecurityPolicy>().CountAsync();
+            if (securityPolicyCount == 0)
+            {
+                await _connection.InsertAsync(new SecurityPolicy
+                {
+                    EnableEncryptionAtRest = false,
+                    MinPasswordLength = 8,
+                    RequireMfa = false,
+                    BackupRetentionDays = 30,
+                    BackupSlaHours = 24,
+                    LastUpdatedAt = DateTime.UtcNow,
+                    UpdatedByUsername = "System"
+                });
             }
 
             var accountCount = await _connection.Table<Account>().CountAsync();

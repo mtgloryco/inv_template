@@ -32,6 +32,10 @@ namespace InventoryManagementSystem.UI.ViewModels
             new() { Key = "ap-aging", Title = "AP Aging", Category = "Receivables & Payables", Description = "Outstanding vendor bills by age" },
             new() { Key = "vat-return", Title = "VAT Return", Category = "Tax & Banking", Description = "Output vs input VAT for filing" },
             new() { Key = "bank-reconciliation", Title = "Bank Reconciliation", Category = "Tax & Banking", Description = "Match payments to bank statements" },
+            new() { Key = "abc-analysis", Title = "ABC Analysis", Category = "Advanced Analytics", Description = "Revenue-based product classification (A/B/C)" },
+            new() { Key = "dead-stock", Title = "Dead Stock", Category = "Advanced Analytics", Description = "Products with stock but no recent sales" },
+            new() { Key = "margin-by-category", Title = "Margin by Category", Category = "Advanced Analytics", Description = "Gross margin breakdown by product category" },
+            new() { Key = "month-close", Title = "Month Close Summary", Category = "Advanced Analytics", Description = "Trial balance and open AR/AP for period close" },
         };
 
         private readonly InventoryService _inventoryService;
@@ -42,6 +46,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly VatExportService _vatExportService;
         private readonly BudgetReportService _budgetReportService;
         private readonly PaymentService _paymentService;
+        private readonly AdvancedAnalyticsService _advancedAnalyticsService;
+        private readonly MonthCloseService _monthCloseService;
 
         [ObservableProperty] private string _selectedCategory = "Financial Statements";
         [ObservableProperty] private ReportNavItem? _selectedReportNavItem;
@@ -98,6 +104,11 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private ReconciliationCandidate? _selectedReconLine;
         [ObservableProperty] private string _reconStatusMessage = string.Empty;
 
+        [ObservableProperty] private ObservableCollection<AbcAnalysisLine> _abcAnalysisLines = new();
+        [ObservableProperty] private ObservableCollection<ProductRecommendation> _deadStockLines = new();
+        [ObservableProperty] private ObservableCollection<CategoryMarginLine> _categoryMarginLines = new();
+        [ObservableProperty] private MonthCloseSummary? _monthCloseSummary;
+
         [ObservableProperty] private bool _isImportStatementModalOpen;
         [ObservableProperty] private DateTime _importStatementDate = DateTime.Today;
         [ObservableProperty] private decimal _importOpeningBalance;
@@ -144,7 +155,16 @@ namespace InventoryManagementSystem.UI.ViewModels
             OnPropertyChanged(nameof(IsVatReturnSelected));
             OnPropertyChanged(nameof(IsBudgetVsActualSelected));
             OnPropertyChanged(nameof(IsBankReconciliationSelected));
+            OnPropertyChanged(nameof(IsAbcAnalysisSelected));
+            OnPropertyChanged(nameof(IsDeadStockSelected));
+            OnPropertyChanged(nameof(IsMarginByCategorySelected));
+            OnPropertyChanged(nameof(IsMonthCloseSelected));
         }
+
+        public bool IsAbcAnalysisSelected => SelectedReportNavItem?.Key == "abc-analysis";
+        public bool IsDeadStockSelected => SelectedReportNavItem?.Key == "dead-stock";
+        public bool IsMarginByCategorySelected => SelectedReportNavItem?.Key == "margin-by-category";
+        public bool IsMonthCloseSelected => SelectedReportNavItem?.Key == "month-close";
 
         partial void OnSelectedReconBankAccountChanged(BankAccountDisplayRow? value)
         {
@@ -166,7 +186,9 @@ namespace InventoryManagementSystem.UI.ViewModels
             AgingReportService agingReportService,
             VatExportService vatExportService,
             BudgetReportService budgetReportService,
-            PaymentService paymentService)
+            PaymentService paymentService,
+            AdvancedAnalyticsService advancedAnalyticsService,
+            MonthCloseService monthCloseService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
@@ -177,6 +199,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             _vatExportService = vatExportService;
             _budgetReportService = budgetReportService;
             _paymentService = paymentService;
+            _advancedAnalyticsService = advancedAnalyticsService;
+            _monthCloseService = monthCloseService;
 
             RefreshReportsInCategory();
         }
@@ -217,6 +241,18 @@ namespace InventoryManagementSystem.UI.ViewModels
                         break;
                     case "bank-reconciliation":
                         await LoadBankReconciliationAsync();
+                        break;
+                    case "abc-analysis":
+                        await LoadAbcAnalysisAsync();
+                        break;
+                    case "dead-stock":
+                        await LoadDeadStockAsync();
+                        break;
+                    case "margin-by-category":
+                        await LoadMarginByCategoryAsync();
+                        break;
+                    case "month-close":
+                        await LoadMonthCloseAsync();
                         break;
                 }
             }
@@ -646,6 +682,37 @@ namespace InventoryManagementSystem.UI.ViewModels
         private void CloseJournalModal()
         {
             IsJournalModalOpen = false;
+        }
+
+        private async Task LoadAbcAnalysisAsync()
+        {
+            ReportTitle = "ABC Analysis";
+            AbcAnalysisLines.Clear();
+            var lines = await _advancedAnalyticsService.GetAbcAnalysisAsync();
+            foreach (var line in lines) AbcAnalysisLines.Add(line);
+        }
+
+        private async Task LoadDeadStockAsync()
+        {
+            ReportTitle = "Dead Stock Report (90 days)";
+            DeadStockLines.Clear();
+            var lines = await _advancedAnalyticsService.GetDeadStockReportAsync();
+            foreach (var line in lines) DeadStockLines.Add(line);
+        }
+
+        private async Task LoadMarginByCategoryAsync()
+        {
+            ReportTitle = "Margin by Category";
+            CategoryMarginLines.Clear();
+            var lines = await _advancedAnalyticsService.GetMarginByCategoryAsync();
+            foreach (var line in lines) CategoryMarginLines.Add(line);
+        }
+
+        private async Task LoadMonthCloseAsync()
+        {
+            var now = DateTime.Today;
+            ReportTitle = $"Month Close Summary — {now:MMMM yyyy}";
+            MonthCloseSummary = await _monthCloseService.GetMonthCloseSummaryAsync(now.Year, now.Month);
         }
     }
 

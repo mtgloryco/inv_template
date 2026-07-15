@@ -11,10 +11,12 @@ namespace InventoryManagementSystem.Services
     public class CycleCountService
     {
         private readonly DatabaseService _databaseService;
+        private readonly AuditService? _auditService;
 
-        public CycleCountService(DatabaseService databaseService)
+        public CycleCountService(DatabaseService databaseService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
+            _auditService = auditService;
         }
 
         public async Task<List<CycleCountListItem>> GetAllAsync()
@@ -202,6 +204,16 @@ namespace InventoryManagementSystem.Services
                 SyncMetadataHelper.Touch(count);
                 conn.Update(count);
             });
+
+            if (_auditService != null)
+            {
+                var count = await _databaseService.Connection.FindAsync<CycleCount>(cycleCountId);
+                if (count != null)
+                {
+                    await _auditService.LogActionAsync(
+                        username, "Post", "CycleCount", cycleCountId, count);
+                }
+            }
         }
 
         private static void PostVarianceJournal(SQLiteConnection conn, CycleCount count, decimal totalVarianceValue)

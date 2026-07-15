@@ -12,10 +12,12 @@ namespace InventoryManagementSystem.Services
     public class UserService
     {
         private readonly DatabaseService _databaseService;
+        private readonly AuditService? _auditService;
 
-        public UserService(DatabaseService databaseService)
+        public UserService(DatabaseService databaseService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
+            _auditService = auditService;
         }
 
         public async Task InitializeAsync()
@@ -87,17 +89,41 @@ namespace InventoryManagementSystem.Services
         {
             user.PasswordHash = HashPassword(plainPassword);
             await _databaseService.Connection.InsertAsync(user);
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Create", "User", user.Id, ToAuditSnapshot(user));
+            }
         }
 
         public async Task UpdateUserAsync(User user)
         {
+            var old = await GetUserByIdAsync(user.Id);
             await _databaseService.Connection.UpdateAsync(user);
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Update", "User", user.Id,
+                    ToAuditSnapshot(user),
+                    old != null ? ToAuditSnapshot(old) : null);
+            }
         }
 
         public async Task UpdateUserAccessAsync(User user, IEnumerable<string> permissions)
         {
+            var old = await GetUserByIdAsync(user.Id);
             user.PermissionsJson = UserAccessService.SerializePermissions(permissions);
             await _databaseService.Connection.UpdateAsync(user);
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Update", "User", user.Id,
+                    new { user.Username, user.Role, Permissions = permissions },
+                    old != null ? new { old.Username, old.Role, old.PermissionsJson } : null);
+            }
         }
 
         public async Task RecordLoginAsync(User user)
@@ -113,12 +139,28 @@ namespace InventoryManagementSystem.Services
         {
             user.PasswordHash = HashPassword(newPassword);
             await _databaseService.Connection.UpdateAsync(user);
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Update", "User", user.Id,
+                    new { user.Username, PasswordChanged = true });
+            }
         }
 
         public async Task DeleteUserAsync(User user)
         {
             await _databaseService.Connection.DeleteAsync(user);
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Delete", "User", user.Id, null, ToAuditSnapshot(user));
+            }
         }
+
+        private static object ToAuditSnapshot(User user) =>
+            new { user.Username, user.Role, user.PermissionsJson, user.LastLoginAt };
 
         private string HashPassword(string password)
         {

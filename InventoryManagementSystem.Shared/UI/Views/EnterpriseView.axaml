@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="InventoryManagementSystem.UI.Views.EnterpriseView"
+             x:DataType="vm:EnterpriseViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Enterprise Hub" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Multi-branch, approvals, CRM, MRP, mobile sync, and security compliance." FontSize="13" Foreground="#6B7280" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" Margin="0,16,0,0">
+            <TabItem Header="Companies">
+                <Grid RowDefinitions="Auto,*" Margin="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                        <TextBox Width="180" Watermark="Branch name" Text="{Binding NewBranchName}"/>
+                        <TextBox Width="100" Watermark="Code" Text="{Binding NewBranchCode}"/>
+                        <Button Content="Add Branch" Command="{Binding SaveBranchCommand}" Background="#007ACC" Foreground="White" Padding="10,6"/>
+                        <Button Content="Refresh" Command="{Binding LoadBranchesCommand}" Padding="10,6"/>
+                    </StackPanel>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                        <DataGrid ItemsSource="{Binding Branches}" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="80"/>
+                                <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid Grid.Column="1" Margin="12,0,0,0" ItemsSource="{Binding ConsolidatedLines}" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Branch" Binding="{Binding BranchName}" Width="*"/>
+                                <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat=N2}" Width="100"/>
+                                <DataGridTextColumn Header="Stock Value" Binding="{Binding StockValue, StringFormat=N2}" Width="100"/>
+                                <DataGridTextColumn Header="Locations" Binding="{Binding LocationCount}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Approvals">
+                <Grid RowDefinitions="Auto,*" Margin="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                        <Button Content="Refresh" Command="{Binding LoadApprovalsCommand}" Padding="10,6"/>
+                        <Button Content="Approve" Command="{Binding ApproveSelectedCommand}" Background="#2E7D32" Foreground="White" Padding="10,6"/>
+                        <Button Content="Reject" Command="{Binding RejectSelectedCommand}" Background="#C62828" Foreground="White" Padding="10,6"/>
+                    </StackPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding PendingApprovals}" SelectedItem="{Binding SelectedApproval}" AutoGenerateColumns="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Type" Binding="{Binding RequestType}" Width="120"/>
+                            <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=N2}" Width="100"/>
+                            <DataGridTextColumn Header="Requested By" Binding="{Binding RequestedByUsername}" Width="120"/>
+                            <DataGridTextColumn Header="Notes" Binding="{Binding RequestNotes}" Width="*"/>
+                            <DataGridTextColumn Header="Created" Binding="{Binding CreatedAt, StringFormat=g}" Width="140"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="CRM Pipeline">
+                <Grid RowDefinitions="Auto,Auto,*" Margin="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                        <TextBox Width="200" Watermark="Opportunity title" Text="{Binding NewOpportunityTitle}"/>
+                        <TextBox Width="100" Watermark="Customer ID" Text="{Binding NewOpportunityCustomerId}"/>
+                        <TextBox Width="120" Watermark="Expected revenue" Text="{Binding NewOpportunityRevenue}"/>
+                        <Button Content="Add Lead" Command="{Binding CreateOpportunityCommand}" Background="#007ACC" Foreground="White" Padding="10,6"/>
+                        <Button Content="Convert to Quotation" Command="{Binding ConvertOpportunityToQuotationCommand}" Padding="10,6"/>
+                        <Button Content="Refresh" Command="{Binding LoadPipelineCommand}" Padding="10,6"/>
+                    </StackPanel>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Pipeline}" SelectedItem="{Binding SelectedOpportunity}" AutoGenerateColumns="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Opportunity.Title}" Width="*"/>
+                            <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="140"/>
+                            <DataGridTextColumn Header="Stage" Binding="{Binding Opportunity.Stage}" Width="100"/>
+                            <DataGridTextColumn Header="Revenue" Binding="{Binding Opportunity.ExpectedRevenue, StringFormat=N2}" Width="100"/>
+                            <DataGridTextColumn Header="Quotation" Binding="{Binding QuotationNumber}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="MRP">
+                <Grid RowDefinitions="Auto,*,Auto" Margin="8">
+                    <Button Content="Run MRP" Command="{Binding RunMrpCommand}" HorizontalAlignment="Left" Background="#007ACC" Foreground="White" Padding="10,6" Margin="0,0,0,12"/>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                        <DataGrid ItemsSource="{Binding PlannedOrders}" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Product ID" Binding="{Binding ProductId}" Width="90"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding OrderType}" Width="100"/>
+                                <DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="70"/>
+                                <DataGridTextColumn Header="Start" Binding="{Binding PlannedStartDate, StringFormat=d}" Width="100"/>
+                                <DataGridTextColumn Header="End" Binding="{Binding PlannedEndDate, StringFormat=d}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid Grid.Column="1" Margin="12,0,0,0" ItemsSource="{Binding CapacityLines}" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Work Center" Binding="{Binding WorkCenterName}" Width="*"/>
+                                <DataGridTextColumn Header="Available h" Binding="{Binding AvailableHours, StringFormat=F1}" Width="90"/>
+                                <DataGridTextColumn Header="Scheduled h" Binding="{Binding ScheduledHours, StringFormat=F1}" Width="90"/>
+                                <DataGridTextColumn Header="Utilization %" Binding="{Binding UtilizationPercent}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Mobile">
+                <Grid RowDefinitions="Auto,*" Margin="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                        <TextBox Width="180" Watermark="Device name" Text="{Binding NewDeviceName}"/>
+                        <ComboBox Width="120" ItemsSource="{Binding DeviceTypes}" SelectedItem="{Binding NewDeviceType}"/>
+                        <ComboBox Width="180" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Content="Register Device" Command="{Binding RegisterMobileDeviceCommand}" Background="#007ACC" Foreground="White" Padding="10,6"/>
+                    </StackPanel>
+                    <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                        <TextBlock Text="{Binding GeneratedApiKey, StringFormat='API Key (shown once): {0}'}" FontSize="11" Foreground="#6B7280" Margin="0,0,0,8"/>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding MobileDevices}" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding DeviceName}" Width="*"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding DeviceType}" Width="100"/>
+                                <DataGridTextColumn Header="Branch ID" Binding="{Binding BranchId}" Width="80"/>
+                                <DataGridTextColumn Header="Last Sync" Binding="{Binding LastSyncAt, StringFormat=g}" Width="140"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Security">
+                <StackPanel Spacing="12" Margin="8">
+                    <CheckBox Content="Encryption at rest" IsChecked="{Binding SecurityPolicy.EnableEncryptionAtRest}"/>
+                    <CheckBox Content="Require MFA" IsChecked="{Binding SecurityPolicy.RequireMfa}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Min password length:" VerticalAlignment="Center"/>
+                        <NumericUpDown Width="80" Value="{Binding SecurityPolicy.MinPasswordLength}" Minimum="6" Maximum="32"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Backup SLA (hours):" VerticalAlignment="Center"/>
+                        <NumericUpDown Width="80" Value="{Binding SecurityPolicy.BackupSlaHours}" Minimum="1" Maximum="168"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding BackupWithinSla, StringFormat='Latest backup within SLA: {0}'}" Foreground="#6B7280"/>
+                    <Button Content="Save Policy" Command="{Binding SaveSecurityPolicyCommand}" HorizontalAlignment="Left" Background="#007ACC" Foreground="White" Padding="10,6"/>
+                    <Separator/>
+                    <TextBlock Text="SSO Configuration (stub — stores provider settings only)" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Width="160" Watermark="Provider (AzureAD, Okta...)" Text="{Binding SsoProvider}"/>
+                        <TextBox Width="200" Watermark="Client ID" Text="{Binding SsoClientId}"/>
+                        <Button Content="Configure SSO" Command="{Binding ConfigureSsoCommand}" Padding="10,6"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Foreground="#6B7280" Margin="0,12,0,0"/>
+    </Grid>
+</UserControl>

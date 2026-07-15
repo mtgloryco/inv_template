@@ -15,16 +15,18 @@ namespace InventoryManagementSystem.Services
     {
         private readonly DatabaseService _databaseService;
         private readonly CloudSyncApiClient _apiClient;
+        private readonly AuditService? _auditService;
         private readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true,
             WriteIndented = false
         };
 
-        public CloudSyncService(DatabaseService databaseService, CloudSyncApiClient? apiClient = null)
+        public CloudSyncService(DatabaseService databaseService, CloudSyncApiClient? apiClient = null, AuditService? auditService = null)
         {
             _databaseService = databaseService;
             _apiClient = apiClient ?? new CloudSyncApiClient();
+            _auditService = auditService;
         }
 
         public string DeviceId => GetOrCreateDeviceIdAsync().GetAwaiter().GetResult();
@@ -337,13 +339,88 @@ namespace InventoryManagementSystem.Services
             }
 
             CopyLocalId(existing, syncable);
-            if (GetUpdatedAt(existing) <= change.UpdatedAt.ToUniversalTime())
+            var serverUpdatedAt = change.UpdatedAt.ToUniversalTime();
+            var localUpdatedAt = GetUpdatedAt(existing);
+
+            if (localUpdatedAt > serverUpdatedAt)
+            {
+                var localJson = JsonSerializer.Serialize(existing, descriptor.ClrType, _jsonOptions);
+                if (!string.Equals(localJson, change.PayloadJson, StringComparison.Ordinal))
+                {
+                    LogSyncConflict(conn, change.EntityType, change.SyncId, localJson, change.PayloadJson);
+                    return false;
+                }
+            }
+
+            if (localUpdatedAt <= serverUpdatedAt)
             {
                 conn.Update(entity);
                 return true;
             }
 
             return false;
+        }
+
+        public async Task<int> ResolvePendingConflictsAsync(string resolution, string username)
+        {
+            var pending = await _databaseService.Connection.Table<SyncConflictLog>()
+                .Where(c => c.Resolution == "Pending")
+                .ToListAsync();
+
+            var resolved = 0;
+            await _databaseService.Connection.RunInTransactionAsync(conn =>
+            {
+                foreach (var conflict in pending)
+                {
+                    var descriptor = SyncEntityRegistry.All.FirstOrDefault(d => d.EntityType == conflict.EntityType);
+                    if (descriptor == null) continue;
+
+                    if (resolution.Equals("ServerWins", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var entity = JsonSerializer.Deserialize(conflict.ServerPayloadJson, descriptor.ClrType, _jsonOptions);
+                        if (entity is ISyncableEntity syncable)
+                        {
+                            var existing = FindLocalBySyncId(conn, descriptor, conflict.SyncId);
+                            if (existing != null)
+                            {
+                                CopyLocalId(existing, syncable);
+                                conn.Update(entity);
+                            }
+                            else
+                            {
+                                ResetAutoIncrementId(entity!);
+                                conn.Insert(entity);
+                            }
+                        }
+                    }
+
+                    conflict.Resolution = resolution;
+                    conflict.ResolvedAt = DateTime.UtcNow;
+                    conn.Update(conflict);
+                    resolved++;
+                }
+            });
+
+            if (_auditService != null && resolved > 0)
+            {
+                await _auditService.LogActionAsync(username, "ResolveSyncConflicts", "SyncConflictLog", 0,
+                    new { resolution, resolvedCount = resolved });
+            }
+
+            return resolved;
+        }
+
+        private void LogSyncConflict(SQLiteConnection conn, string entityType, Guid syncId, string localJson, string serverJson)
+        {
+            conn.Insert(new SyncConflictLog
+            {
+                EntityType = entityType,
+                SyncId = syncId,
+                LocalPayloadJson = localJson,
+                ServerPayloadJson = serverJson,
+                DetectedAt = DateTime.UtcNow,
+                Resolution = "Pending"
+            });
         }
 
         private static ISyncableEntity? FindLocalBySyncId(SQLiteConnection conn, SyncEntityDescriptor descriptor, Guid syncId)

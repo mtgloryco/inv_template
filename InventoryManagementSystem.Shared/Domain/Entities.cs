@@ -285,6 +285,7 @@ namespace InventoryManagementSystem.Domain
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = "Warehouse"; // Warehouse, Store, Vehicle, External
         public string Address { get; set; } = string.Empty;
+        public int BranchId { get; set; }
         public bool IsActive { get; set; } = true;
     }
 
@@ -940,6 +941,257 @@ namespace InventoryManagementSystem.Domain
         public decimal Days61To90 { get; set; }
         public decimal Over90 { get; set; }
         public decimal TotalOpen { get; set; }
+    }
+
+    public class WebhookEndpoint
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string TargetUrl { get; set; } = string.Empty;
+        /// <summary>Comma-separated event types, e.g. sales.created,payment.received</summary>
+        public string EventTypes { get; set; } = string.Empty;
+        public string Secret { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class WebhookDeliveryLog
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int WebhookEndpointId { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public string PayloadJson { get; set; } = string.Empty;
+        public int HttpStatusCode { get; set; }
+        public string ResponseBody { get; set; } = string.Empty;
+        public bool Success { get; set; }
+        public DateTime DeliveredAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class NotificationOutbox
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Channel { get; set; } = "Email";
+        public string Recipient { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
+        public string ReferenceType { get; set; } = string.Empty;
+        public int? ReferenceId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? SentAt { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+    }
+
+    public class SyncConflictLog
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string EntityType { get; set; } = string.Empty;
+        public Guid SyncId { get; set; }
+        public string LocalPayloadJson { get; set; } = string.Empty;
+        public string ServerPayloadJson { get; set; } = string.Empty;
+        public DateTime DetectedAt { get; set; } = DateTime.UtcNow;
+        public string Resolution { get; set; } = "Pending";
+        public DateTime? ResolvedAt { get; set; }
+    }
+
+    public class CategoryMarginLine
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public decimal Cost { get; set; }
+        public decimal GrossProfit { get; set; }
+        public decimal MarginPercent { get; set; }
+        public int ProductCount { get; set; }
+    }
+
+    public class AbcAnalysisLine
+    {
+        public string SKU { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string Classification { get; set; } = "C";
+        public decimal Revenue { get; set; }
+        public decimal RevenueSharePercent { get; set; }
+    }
+
+    public class MonthCloseSummary
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public decimal TotalDebits { get; set; }
+        public decimal TotalCredits { get; set; }
+        public bool IsBalanced => Math.Abs(TotalDebits - TotalCredits) < 0.01m;
+        public decimal NetProfit { get; set; }
+        public int PostedEntryCount { get; set; }
+        public int OpenArCount { get; set; }
+        public int OpenApCount { get; set; }
+    }
+
+    // --- PHASE 5: ENTERPRISE TIER ---
+
+    public class CompanyBranch : ISyncableEntity
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
+        public int? ParentBranchId { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public string Currency { get; set; } = "RWF";
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ConsolidatedBranchLine
+    {
+        public int BranchId { get; set; }
+        public string BranchName { get; set; } = string.Empty;
+        public string BranchCode { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public decimal StockValue { get; set; }
+        public int LocationCount { get; set; }
+        public int OpenSalesOrders { get; set; }
+    }
+
+    public class ApprovalRequest
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        /// <summary>PurchaseOrder, Discount, WriteOff</summary>
+        public string RequestType { get; set; } = string.Empty;
+        public string ReferenceType { get; set; } = string.Empty;
+        public int ReferenceId { get; set; }
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = "Pending";
+        public string RequestedByUsername { get; set; } = string.Empty;
+        public string ReviewedByUsername { get; set; } = string.Empty;
+        public string RequestNotes { get; set; } = string.Empty;
+        public string ReviewNotes { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? ReviewedAt { get; set; }
+    }
+
+    public class WorkCenter
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int BranchId { get; set; }
+        public double HoursPerDay { get; set; } = 8.0;
+        public double EfficiencyPercent { get; set; } = 100.0;
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class MrpPlannedOrder
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int ProductId { get; set; }
+        /// <summary>Purchase or Manufacturing</summary>
+        public string OrderType { get; set; } = "Purchase";
+        public double Quantity { get; set; }
+        public DateTime PlannedStartDate { get; set; } = DateTime.Today;
+        public DateTime PlannedEndDate { get; set; } = DateTime.Today.AddDays(7);
+        public string Status { get; set; } = "Planned";
+        public string SourceReference { get; set; } = string.Empty;
+        public int? WorkCenterId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class MrpCapacityLine
+    {
+        public int WorkCenterId { get; set; }
+        public string WorkCenterName { get; set; } = string.Empty;
+        public double AvailableHours { get; set; }
+        public double ScheduledHours { get; set; }
+        public double UtilizationPercent { get; set; }
+        public bool IsOverloaded { get; set; }
+    }
+
+    public class CrmOpportunity : ISyncableEntity
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int CustomerId { get; set; }
+        /// <summary>Lead, Qualified, Proposal, Won, Lost</summary>
+        public string Stage { get; set; } = "Lead";
+        public decimal ExpectedRevenue { get; set; }
+        public int ProbabilityPercent { get; set; } = 10;
+        public int? SalesOrderId { get; set; }
+        public string AssignedToUsername { get; set; } = string.Empty;
+        public DateTime? ExpectedCloseDate { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class CrmOpportunityListItem
+    {
+        public CrmOpportunity Opportunity { get; set; } = new();
+        public string CustomerName { get; set; } = string.Empty;
+        public string QuotationNumber { get; set; } = string.Empty;
+    }
+
+    public class MobileDeviceRegistration
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        /// <summary>Warehouse or FieldSales</summary>
+        public string DeviceType { get; set; } = "Warehouse";
+        public string ApiKeyHash { get; set; } = string.Empty;
+        public int BranchId { get; set; }
+        public bool IsActive { get; set; } = true;
+        public DateTime? LastSyncAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class MobileSyncQueue
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int DeviceId { get; set; }
+        public string OperationType { get; set; } = string.Empty;
+        public string PayloadJson { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? ProcessedAt { get; set; }
+    }
+
+    public class SecurityPolicy
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public bool EnableEncryptionAtRest { get; set; }
+        public int MinPasswordLength { get; set; } = 8;
+        public bool RequireMfa { get; set; }
+        public string SsoProvider { get; set; } = string.Empty;
+        public string SsoClientId { get; set; } = string.Empty;
+        public int BackupRetentionDays { get; set; } = 30;
+        public int BackupSlaHours { get; set; } = 24;
+        public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+        public string UpdatedByUsername { get; set; } = string.Empty;
+    }
+
+    public class BackupSlaLog
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string BackupType { get; set; } = "Cloud";
+        public DateTime StartedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? CompletedAt { get; set; }
+        public bool Success { get; set; }
+        public long SizeBytes { get; set; }
+        public bool WithinSla { get; set; }
     }
 }
 

@@ -44,6 +44,15 @@ public partial class MainViewModel : ViewModelBase
     private readonly BudgetReportService _budgetReportService;
     private readonly CurrencyService _currencyService;
     private readonly CycleCountService _cycleCountService;
+    private readonly IntegrationWebhookService _integrationWebhookService;
+    private readonly NotificationService _notificationService;
+    private readonly MonthCloseService _monthCloseService;
+    private readonly CompanyBranchService _companyBranchService;
+    private readonly WorkflowApprovalService _workflowApprovalService;
+    private readonly MrpPlanningService _mrpPlanningService;
+    private readonly CrmPipelineService _crmPipelineService;
+    private readonly MobileFieldService _mobileFieldService;
+    private readonly SecurityComplianceService _securityComplianceService;
 
     public IndustryTemplateService IndustryTemplateService => _industryTemplateService;
     public CustomFieldService CustomFieldService => _customFieldService;
@@ -122,7 +131,16 @@ public partial class MainViewModel : ViewModelBase
         VatExportService vatExportService,
         BudgetReportService budgetReportService,
         CurrencyService currencyService,
-        CycleCountService cycleCountService)
+        CycleCountService cycleCountService,
+        IntegrationWebhookService integrationWebhookService,
+        NotificationService notificationService,
+        MonthCloseService monthCloseService,
+        CompanyBranchService companyBranchService,
+        WorkflowApprovalService workflowApprovalService,
+        MrpPlanningService mrpPlanningService,
+        CrmPipelineService crmPipelineService,
+        MobileFieldService mobileFieldService,
+        SecurityComplianceService securityComplianceService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -161,6 +179,15 @@ public partial class MainViewModel : ViewModelBase
         _budgetReportService = budgetReportService;
         _currencyService = currencyService;
         _cycleCountService = cycleCountService;
+        _integrationWebhookService = integrationWebhookService;
+        _notificationService = notificationService;
+        _monthCloseService = monthCloseService;
+        _companyBranchService = companyBranchService;
+        _workflowApprovalService = workflowApprovalService;
+        _mrpPlanningService = mrpPlanningService;
+        _crmPipelineService = crmPipelineService;
+        _mobileFieldService = mobileFieldService;
+        _securityComplianceService = securityComplianceService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -262,6 +289,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAccessCloudSync));
         OnPropertyChanged(nameof(CanManageUsers));
         OnPropertyChanged(nameof(CanAccessSettings));
+        OnPropertyChanged(nameof(CanAccessEnterprise));
 
         OnPropertyChanged(nameof(SidebarGridLength));
     }
@@ -449,6 +477,7 @@ public partial class MainViewModel : ViewModelBase
     public bool CanAccessCloudSync => _licenseService.CanAccessCloudSync() && HasRolePermission(RolePermissions.ManageSettings);
     public bool CanManageUsers => HasRolePermission(RolePermissions.ManageUsers);
     public bool CanAccessSettings => HasRolePermission(RolePermissions.ManageSettings);
+    public bool CanAccessEnterprise => HasRolePermission(RolePermissions.ManageSettings) || HasRolePermission(RolePermissions.ViewReports);
 
     [ObservableProperty]
     private string _syncStatusText = "Cloud sync unavailable";
@@ -570,7 +599,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense(); 
             return;
         }
-        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService, _settingsService, Language, _accountingReportService, _agingReportService, _vatExportService, _budgetReportService, _paymentService));
+        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService, _settingsService, Language, _accountingReportService, _agingReportService, _vatExportService, _budgetReportService, _paymentService, _advancedAnalyticsService, _monthCloseService));
     }
 
     [RelayCommand]
@@ -582,7 +611,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService, _settingsService, Language, _salesOrderService, _customerService, _journalService, _taxService, _barcodeService, _currencyService));
+        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService, _settingsService, Language, _salesOrderService, _customerService, _journalService, _taxService, _barcodeService, _currencyService, _auditService));
     }
 
     [RelayCommand]
@@ -739,6 +768,19 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
         NavigateTo(new AuditTrailViewModel(_auditService));
+    }
+
+    [RelayCommand]
+    public void GoToEnterprise()
+    {
+        if (!CanAccessEnterprise)
+        {
+            return;
+        }
+        NavigateTo(new EnterpriseViewModel(
+            _companyBranchService, _workflowApprovalService, _mrpPlanningService,
+            _crmPipelineService, _mobileFieldService, _securityComplianceService,
+            _inventoryService));
     }
 
     private void OnActivationSuccess()

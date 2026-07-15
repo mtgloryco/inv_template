@@ -435,6 +435,60 @@
                               </Grid>
                           </StackPanel>
                       </ScrollViewer>
+
+                      <ScrollViewer IsVisible="{Binding IsAbcAnalysisSelected}" Margin="20">
+                          <DataGrid ItemsSource="{Binding AbcAnalysisLines}" AutoGenerateColumns="False" IsReadOnly="True">
+                              <DataGrid.Columns>
+                                  <DataGridTextColumn Header="ABC" Binding="{Binding Classification}" Width="60"/>
+                                  <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="100"/>
+                                  <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*"/>
+                                  <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='{}{0:N2}'}" Width="120"/>
+                                  <DataGridTextColumn Header="Share %" Binding="{Binding RevenueSharePercent, StringFormat='{}{0:N1}'}" Width="90"/>
+                              </DataGrid.Columns>
+                          </DataGrid>
+                      </ScrollViewer>
+
+                      <ScrollViewer IsVisible="{Binding IsDeadStockSelected}" Margin="20">
+                          <DataGrid ItemsSource="{Binding DeadStockLines}" AutoGenerateColumns="False" IsReadOnly="True">
+                              <DataGrid.Columns>
+                                  <DataGridTextColumn Header="Product" Binding="{Binding Product.Name}" Width="*"/>
+                                  <DataGridTextColumn Header="Stock" Binding="{Binding Product.StockQuantity}" Width="80"/>
+                                  <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="2*"/>
+                                  <DataGridTextColumn Header="Suggested Action" Binding="{Binding Action}" Width="2*"/>
+                              </DataGrid.Columns>
+                          </DataGrid>
+                      </ScrollViewer>
+
+                      <ScrollViewer IsVisible="{Binding IsMarginByCategorySelected}" Margin="20">
+                          <DataGrid ItemsSource="{Binding CategoryMarginLines}" AutoGenerateColumns="False" IsReadOnly="True">
+                              <DataGrid.Columns>
+                                  <DataGridTextColumn Header="Category" Binding="{Binding CategoryName}" Width="*"/>
+                                  <DataGridTextColumn Header="Products" Binding="{Binding ProductCount}" Width="80"/>
+                                  <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='{}{0:N2}'}" Width="120"/>
+                                  <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat='{}{0:N2}'}" Width="120"/>
+                                  <DataGridTextColumn Header="Gross Profit" Binding="{Binding GrossProfit, StringFormat='{}{0:N2}'}" Width="120"/>
+                                  <DataGridTextColumn Header="Margin %" Binding="{Binding MarginPercent, StringFormat='{}{0:P1}'}" Width="90"/>
+                              </DataGrid.Columns>
+                          </DataGrid>
+                      </ScrollViewer>
+
+                      <ScrollViewer IsVisible="{Binding IsMonthCloseSelected}" Margin="20">
+                          <StackPanel Spacing="12" DataContext="{Binding MonthCloseSummary}">
+                              <TextBlock Text="Period trial balance and open balances" Foreground="{DynamicResource TextSecondaryColor}"/>
+                              <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto">
+                                  <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Debits" FontWeight="SemiBold"/>
+                                  <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalDebits, StringFormat='{}{0:N2}'}"/>
+                                  <TextBlock Grid.Row="1" Grid.Column="0" Text="Total Credits" FontWeight="SemiBold"/>
+                                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TotalCredits, StringFormat='{}{0:N2}'}"/>
+                                  <TextBlock Grid.Row="2" Grid.Column="0" Text="Posted Entries" FontWeight="SemiBold"/>
+                                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PostedEntryCount}"/>
+                                  <TextBlock Grid.Row="3" Grid.Column="0" Text="Open AR Documents" FontWeight="SemiBold"/>
+                                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding OpenArCount}"/>
+                                  <TextBlock Grid.Row="4" Grid.Column="0" Text="Open AP Documents" FontWeight="SemiBold"/>
+                                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding OpenApCount}"/>
+                              </Grid>
+                          </StackPanel>
+                      </ScrollViewer>
                   </Panel>
              </Grid>
         </Border>

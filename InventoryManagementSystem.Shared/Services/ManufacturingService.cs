@@ -10,10 +10,12 @@ namespace InventoryManagementSystem.Services
     public class ManufacturingService
     {
         private readonly DatabaseService _databaseService;
+        private readonly AuditService? _auditService;
 
-        public ManufacturingService(DatabaseService databaseService)
+        public ManufacturingService(DatabaseService databaseService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
+            _auditService = auditService;
         }
 
         public async Task<List<BillOfMaterialListItem>> GetAllBomsAsync()
@@ -284,6 +286,16 @@ namespace InventoryManagementSystem.Services
                 order.TotalCost = totalCostSum;
                 conn.Update(order);
             });
+
+            if (_auditService != null)
+            {
+                var order = await _databaseService.Connection.FindAsync<ManufacturingOrder>(orderId);
+                if (order != null)
+                {
+                    await _auditService.LogActionAsync(
+                        username, "Post", "ManufacturingOrder", orderId, order);
+                }
+            }
         }
 
         public async Task DeleteManufacturingOrderAsync(int orderId)

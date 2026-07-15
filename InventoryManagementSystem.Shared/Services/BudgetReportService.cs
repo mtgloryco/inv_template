@@ -10,10 +10,12 @@ namespace InventoryManagementSystem.Services
     public class BudgetReportService
     {
         private readonly DatabaseService _databaseService;
+        private readonly AuditService? _auditService;
 
-        public BudgetReportService(DatabaseService databaseService)
+        public BudgetReportService(DatabaseService databaseService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
+            _auditService = auditService;
         }
 
         public async Task<List<BudgetLine>> GetBudgetLinesAsync(int fiscalYear, int? periodMonth = null)
@@ -32,13 +34,24 @@ namespace InventoryManagementSystem.Services
 
         public async Task SaveBudgetLineAsync(BudgetLine line)
         {
-            if (line.Id == 0)
+            var isCreate = line.Id == 0;
+            BudgetLine? old = null;
+            if (isCreate)
             {
                 await _databaseService.Connection.InsertAsync(line);
             }
             else
             {
+                old = await _databaseService.Connection.FindAsync<BudgetLine>(line.Id);
                 await _databaseService.Connection.UpdateAsync(line);
+            }
+
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    isCreate ? "Create" : "Update",
+                    "BudgetLine", line.Id, line, old);
             }
         }
 
@@ -48,6 +61,12 @@ namespace InventoryManagementSystem.Services
             if (line != null)
             {
                 await _databaseService.Connection.DeleteAsync(line);
+                if (_auditService != null)
+                {
+                    await _auditService.LogActionAsync(
+                        UserSession.CurrentUser?.Username ?? "System",
+                        "Delete", "BudgetLine", id, null, line);
+                }
             }
         }
 

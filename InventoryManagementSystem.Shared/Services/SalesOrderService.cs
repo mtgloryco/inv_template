@@ -11,11 +11,13 @@ namespace InventoryManagementSystem.Services
     {
         private readonly DatabaseService _databaseService;
         private readonly InventoryService _inventoryService;
+        private readonly AuditService? _auditService;
 
-        public SalesOrderService(DatabaseService databaseService, InventoryService inventoryService)
+        public SalesOrderService(DatabaseService databaseService, InventoryService inventoryService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
             _inventoryService = inventoryService;
+            _auditService = auditService;
         }
 
         // --- PAYMENT TERMS ---
@@ -221,6 +223,13 @@ namespace InventoryManagementSystem.Services
             {
                 item.QuantityInvoiced = item.QuantityOrdered;
                 await _databaseService.Connection.UpdateAsync(item);
+            }
+
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    "Invoice", "SalesOrder", soId, so);
             }
         }
 

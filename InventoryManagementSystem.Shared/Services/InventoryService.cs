@@ -148,14 +148,21 @@ namespace InventoryManagementSystem.Services
 
         public async Task UpdateProductAsync(Product product)
         {
+            var old = await GetProductByIdAsync(product.Id);
             SyncMetadataHelper.Touch(product);
             await _databaseService.Connection.UpdateAsync(product);
+            await _auditService.LogActionAsync(
+                UserSession.CurrentUser?.Username ?? "System",
+                "Update", "Product", product.Id, product, old);
         }
 
         public async Task DeleteProductAsync(Product product)
         {
             SyncMetadataHelper.MarkDeleted(product);
             await _databaseService.Connection.UpdateAsync(product);
+            await _auditService.LogActionAsync(
+                UserSession.CurrentUser?.Username ?? "System",
+                "Delete", "Product", product.Id, null, product);
         }
 
         // Stock Movement
@@ -173,6 +180,7 @@ namespace InventoryManagementSystem.Services
             bool postSalesRevenueJournal = true,
             List<string>? serialNumbers = null)
         {
+            StockMovement? loggedMovement = null;
             await _databaseService.Connection.RunInTransactionAsync(conn =>
             {
                 var product = conn.Find<Product>(productId);
@@ -234,6 +242,7 @@ namespace InventoryManagementSystem.Services
                     };
                     SyncMetadataHelper.Touch(movement);
                     conn.Insert(movement);
+                    loggedMovement = movement;
 
                     if (product.ProductType == "Good")
                     {
@@ -470,6 +479,7 @@ namespace InventoryManagementSystem.Services
                     };
                     SyncMetadataHelper.Touch(movement);
                     conn.Insert(movement);
+                    loggedMovement = movement;
 
                     // Post Journal Entry for Adjustment/IN
                     var journal = conn.Table<Journal>().Where(j => j.SequencePrefix == "STJ").FirstOrDefault()
@@ -545,6 +555,12 @@ namespace InventoryManagementSystem.Services
                     }
                 }
             });
+
+            if (loggedMovement != null)
+            {
+                await _auditService.LogActionAsync(
+                    user, "Create", "StockMovement", loggedMovement.Id, loggedMovement);
+            }
         }
 
         // --- Reporting & Dashboard ---

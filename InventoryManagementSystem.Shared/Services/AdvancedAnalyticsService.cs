@@ -145,8 +145,135 @@ namespace InventoryManagementSystem.Services
 
         public async Task<int> GetInventoryHealthScoreAsync()
         {
-            // composite score (0-100) based on turnover, dead stock %, stockout frequency, margin health
-            return await Task.FromResult(85); 
+            var products = await _databaseService.Connection.Table<Product>().ToListAsync();
+            if (products.Count == 0) return 100;
+
+            var deadStock = await GetDeadStockCountAsync();
+            var deadPct = (decimal)deadStock / products.Count;
+
+            var lowMargin = await GetLowMarginCountAsync();
+            var lowMarginPct = (decimal)lowMargin / products.Count;
+
+            var stockoutRisk = products.Count(p => p.StockQuantity <= 0);
+            var stockoutPct = (decimal)stockoutRisk / products.Count;
+
+            var score = 100m;
+            score -= deadPct * 40m;
+            score -= lowMarginPct * 30m;
+            score -= stockoutPct * 30m;
+            return (int)Math.Clamp(Math.Round(score), 0, 100);
+        }
+
+        public async Task<List<CategoryMarginLine>> GetMarginByCategoryAsync(DateTime? from = null, DateTime? to = null)
+        {
+            var end = to ?? DateTime.Now;
+            var start = from ?? end.AddDays(-90);
+            var products = await _databaseService.Connection.Table<Product>().ToListAsync();
+            var categories = products
+                .GroupBy(p => string.IsNullOrWhiteSpace(p.Category) ? "Uncategorized" : p.Category)
+                .ToList();
+
+            var result = new List<CategoryMarginLine>();
+            foreach (var group in categories)
+            {
+                decimal revenue = 0;
+                decimal cost = 0;
+                foreach (var product in group)
+                {
+                    var sales = await _databaseService.Connection.Table<StockMovement>()
+                        .Where(m => m.ProductId == product.Id && m.MovementType == "OUT" && m.Date >= start && m.Date <= end)
+                        .ToListAsync();
+
+                    revenue += sales.Sum(s => s.QuantityChanged * s.UnitPrice);
+                    cost += sales.Sum(s => s.QuantityChanged) * product.Cost;
+                }
+
+                var profit = revenue - cost;
+                result.Add(new CategoryMarginLine
+                {
+                    CategoryName = group.Key,
+                    Revenue = revenue,
+                    Cost = cost,
+                    GrossProfit = profit,
+                    MarginPercent = revenue == 0 ? 0 : profit / revenue,
+                    ProductCount = group.Count()
+                });
+            }
+
+            return result.OrderByDescending(c => c.GrossProfit).ToList();
+        }
+
+        public async Task<List<AbcAnalysisLine>> GetAbcAnalysisAsync()
+        {
+            var products = await _databaseService.Connection.Table<Product>().ToListAsync();
+            var revenues = new List<(Product Product, decimal Revenue)>();
+
+            foreach (var product in products)
+            {
+                var revenue = await _databaseService.Connection.Table<StockMovement>()
+                    .Where(m => m.ProductId == product.Id && m.MovementType == "OUT")
+                    .ToListAsync();
+                revenues.Add((product, revenue.Sum(m => m.QuantityChanged * m.UnitPrice)));
+            }
+
+            var total = revenues.Sum(r => r.Revenue);
+            if (total <= 0)
+            {
+                return products.Select(p => new AbcAnalysisLine
+                {
+                    SKU = p.SKU ?? string.Empty,
+                    ProductName = p.Name,
+                    Classification = "C",
+                    Revenue = 0,
+                    RevenueSharePercent = 0
+                }).ToList();
+            }
+
+            var ordered = revenues.OrderByDescending(r => r.Revenue).ToList();
+            var result = new List<AbcAnalysisLine>();
+            decimal cumulative = 0;
+
+            foreach (var (product, revenue) in ordered)
+            {
+                var cumulativeBefore = cumulative;
+                cumulative += revenue;
+                var share = revenue / total * 100m;
+                var threshold80 = total * 0.80m;
+                var threshold95 = total * 0.95m;
+                var classification = cumulativeBefore < threshold80 ? "A"
+                    : cumulativeBefore < threshold95 ? "B"
+                    : "C";
+
+                result.Add(new AbcAnalysisLine
+                {
+                    SKU = product.SKU ?? string.Empty,
+                    ProductName = product.Name,
+                    Classification = classification,
+                    Revenue = revenue,
+                    RevenueSharePercent = share
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<List<ProductRecommendation>> GetDeadStockReportAsync(DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var analytics = new AnalyticsService(_databaseService);
+            return await analytics.GetDeadStockAsync(startDate, endDate);
+        }
+
+        private async Task<int> GetDeadStockCountAsync()
+        {
+            var dead = await GetDeadStockReportAsync();
+            return dead.Count;
+        }
+
+        private async Task<int> GetLowMarginCountAsync()
+        {
+            var analytics = new AnalyticsService(_databaseService);
+            var low = await analytics.GetLowMarginProductsAsync();
+            return low.Count;
         }
     }
 

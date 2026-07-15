@@ -70,6 +70,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly TaxService _taxService;
         private readonly BarcodeService _barcodeService;
         private readonly CurrencyService _currencyService;
+        private readonly AuditService? _auditService;
 
         [ObservableProperty] private ObservableCollection<Product> _availableProducts = new();
         [ObservableProperty] private string _barcodeStatusMessage = string.Empty;
@@ -149,7 +150,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             JournalService journalService,
             TaxService taxService,
             BarcodeService barcodeService,
-            CurrencyService currencyService)
+            CurrencyService currencyService,
+            AuditService? auditService = null)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService; // Future pro features
@@ -158,6 +160,7 @@ namespace InventoryManagementSystem.UI.ViewModels
             Language = languageService;
             _salesOrderService = salesOrderService;
             _customerService = customerService;
+            _auditService = auditService;
             _journalService = journalService;
             _taxService = taxService;
             _barcodeService = barcodeService;
@@ -584,6 +587,11 @@ namespace InventoryManagementSystem.UI.ViewModels
                 };
 
                 await connection.InsertAsync(order);
+
+                if (_auditService != null)
+                {
+                    await _auditService.LogActionAsync(user, "Create", "SalesOrder", order.Id, order);
+                }
 
                 // 2. Process each item (insert SalesOrderItem, stock deduction, costing batch tracking)
                 var itemsList = new List<SalesOrderItem>();

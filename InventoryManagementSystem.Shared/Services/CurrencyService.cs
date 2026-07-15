@@ -10,10 +10,12 @@ namespace InventoryManagementSystem.Services
     public class CurrencyService
     {
         private readonly DatabaseService _databaseService;
+        private readonly AuditService? _auditService;
 
-        public CurrencyService(DatabaseService databaseService)
+        public CurrencyService(DatabaseService databaseService, AuditService? auditService = null)
         {
             _databaseService = databaseService;
+            _auditService = auditService;
         }
 
         public async Task<List<ExchangeRate>> GetAllRatesAsync()
@@ -28,13 +30,24 @@ namespace InventoryManagementSystem.Services
         {
             rate.FromCurrency = rate.FromCurrency.Trim().ToUpperInvariant();
             rate.ToCurrency = rate.ToCurrency.Trim().ToUpperInvariant();
-            if (rate.Id == 0)
+            var isCreate = rate.Id == 0;
+            ExchangeRate? old = null;
+            if (isCreate)
             {
                 await _databaseService.Connection.InsertAsync(rate);
             }
             else
             {
+                old = await _databaseService.Connection.FindAsync<ExchangeRate>(rate.Id);
                 await _databaseService.Connection.UpdateAsync(rate);
+            }
+
+            if (_auditService != null)
+            {
+                await _auditService.LogActionAsync(
+                    UserSession.CurrentUser?.Username ?? "System",
+                    isCreate ? "Create" : "Update",
+                    "ExchangeRate", rate.Id, rate, old);
             }
         }
 
@@ -44,6 +57,12 @@ namespace InventoryManagementSystem.Services
             if (rate != null)
             {
                 await _databaseService.Connection.DeleteAsync(rate);
+                if (_auditService != null)
+                {
+                    await _auditService.LogActionAsync(
+                        UserSession.CurrentUser?.Username ?? "System",
+                        "Delete", "ExchangeRate", id, null, rate);
+                }
             }
         }
 
