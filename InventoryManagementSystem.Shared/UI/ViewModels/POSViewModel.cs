@@ -69,6 +69,7 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly JournalService _journalService;
         private readonly TaxService _taxService;
         private readonly BarcodeService _barcodeService;
+        private readonly CurrencyService _currencyService;
 
         [ObservableProperty] private ObservableCollection<Product> _availableProducts = new();
         [ObservableProperty] private string _barcodeStatusMessage = string.Empty;
@@ -77,7 +78,11 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private decimal _totalAmount;
         [ObservableProperty] private decimal _amountPaid;
         [ObservableProperty] private decimal _changeDue;
-        
+        [ObservableProperty] private string _posCheckoutCurrency = "RWF";
+        [ObservableProperty] private decimal _checkoutTotalAmount;
+        [ObservableProperty] private string _checkoutBaseEquivalent = string.Empty;
+
+        public List<string> PosCurrencies { get; } = new() { "USD", "EUR", "GBP", "KES", "RWF", "UGX" };
         [ObservableProperty] private bool _isReceiptModalOpen;
         [ObservableProperty] private string _lastReceiptPath = string.Empty;
         [ObservableProperty] private string _lastReceiptText = string.Empty; // Keep for fallback/display
@@ -129,6 +134,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private string _detailedTaxBreakdownText = string.Empty;
 
         public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
+        public string BaseCurrency => CurrencySymbol ?? "RWF";
+        public string ActiveCheckoutCurrency => string.IsNullOrWhiteSpace(PosCheckoutCurrency) ? BaseCurrency : PosCheckoutCurrency;
         public LanguageService Language { get; }
 
         public POSViewModel(
@@ -141,7 +148,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             CustomerService customerService,
             JournalService journalService,
             TaxService taxService,
-            BarcodeService barcodeService)
+            BarcodeService barcodeService,
+            CurrencyService currencyService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService; // Future pro features
@@ -153,6 +161,9 @@ namespace InventoryManagementSystem.UI.ViewModels
             _journalService = journalService;
             _taxService = taxService;
             _barcodeService = barcodeService;
+            _currencyService = currencyService;
+            PosCheckoutCurrency = BaseCurrency;
+            CheckoutTotalAmount = 0;
             LoadProductsCommand.Execute(null);
             _ = EnsureWalkInCustomerExistsAsync();
         }
@@ -243,6 +254,30 @@ namespace InventoryManagementSystem.UI.ViewModels
         private void RecalculateTotal()
         {
             TotalAmount = CartItems.Sum(x => x.Subtotal);
+            _ = UpdateCheckoutAmountsAsync();
+        }
+
+        partial void OnPosCheckoutCurrencyChanged(string value)
+        {
+            _ = UpdateCheckoutAmountsAsync();
+        }
+
+        private async Task UpdateCheckoutAmountsAsync()
+        {
+            var checkoutCurrency = ActiveCheckoutCurrency;
+            if (string.Equals(checkoutCurrency, BaseCurrency, StringComparison.OrdinalIgnoreCase))
+            {
+                CheckoutTotalAmount = TotalAmount;
+                CheckoutBaseEquivalent = string.Empty;
+            }
+            else
+            {
+                var (converted, _) = await _currencyService.TryFormatFromBaseAsync(TotalAmount, checkoutCurrency, BaseCurrency);
+                CheckoutTotalAmount = converted ?? TotalAmount;
+                CheckoutBaseEquivalent = $"Listed at {TotalAmount:N2} {BaseCurrency}";
+            }
+
+            OnPropertyChanged(nameof(ActiveCheckoutCurrency));
             CalculateChange();
         }
 
@@ -253,7 +288,7 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         private void CalculateChange()
         {
-            ChangeDue = AmountPaid - TotalAmount;
+            ChangeDue = AmountPaid - CheckoutTotalAmount;
         }
 
         [RelayCommand]
@@ -516,6 +551,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             {
                 var user = UserSession.CurrentUser?.Username ?? "Cashier";
                 var connection = _journalService.Database.Connection;
+                var postedTotal = CheckoutTotalAmount;
+                var journalScale = TotalAmount > 0 ? postedTotal / TotalAmount : 1m;
 
                 // Make sure we have a valid customer
                 Customer? actualCustomer = SelectedCustomer;
@@ -536,7 +573,8 @@ namespace InventoryManagementSystem.UI.ViewModels
                     CustomerId = customerId,
                     OrderDate = DateTime.Now,
                     QuotationDate = DateTime.Now,
-                    TotalAmount = TotalAmount,
+                    TotalAmount = CheckoutTotalAmount,
+                    Currency = ActiveCheckoutCurrency,
                     Status = "Delivered",
                     BillingStatus = AutoCreateInvoice ? "Invoiced" : "Waiting Invoice",
                     DeliveryStatus = "Delivered",
@@ -607,7 +645,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                             JournalEntryId = invoiceEntry.Id,
                             AccountId = arAccountId,
                             Label = $"POS Invoice - {order.SONumber}",
-                            Debit = TotalAmount,
+                            Debit = postedTotal,
                             Credit = 0
                         });
 
@@ -628,7 +666,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                                 ProductId = item.Product.Id,
                                 Label = $"POS Revenue - {item.Product.Name} (Qty: {item.Quantity})",
                                 Debit = 0,
-                                Credit = item.Subtotal
+                                Credit = Math.Round(item.Subtotal * journalScale, 2)
                             });
                         }
                     }
@@ -668,7 +706,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                             JournalEntryId = paymentEntry.Id,
                             AccountId = cashAccountId,
                             Label = $"POS Cash Inflow - {order.SONumber}",
-                            Debit = TotalAmount,
+                            Debit = postedTotal,
                             Credit = 0
                         });
 
@@ -679,7 +717,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                             AccountId = arAccountId,
                             Label = $"POS Payment Receipt - {order.SONumber}",
                             Debit = 0,
-                            Credit = TotalAmount
+                            Credit = postedTotal
                         });
                     }
                 }
@@ -703,7 +741,7 @@ namespace InventoryManagementSystem.UI.ViewModels
                 }
                 else
                 {
-                    LastReceiptPath = _receiptService.GenerateReceiptFromCart(user, CartItems, TotalAmount, AmountPaid, ChangeDue);
+                    LastReceiptPath = _receiptService.GenerateReceiptFromCart(user, CartItems, postedTotal, AmountPaid, ChangeDue);
                     LastReceiptText = $"Receipt Generated Successfully!\nSaved to: {LastReceiptPath}";
                 }
 

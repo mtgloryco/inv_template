@@ -43,6 +43,8 @@ namespace InventoryManagementSystem.Services
                     };
                     conn.Insert(movement);
 
+                    BatchTrackingService.RestoreBatchesOnReturn(conn, product, ret.Quantity, movement.Id, product.Cost);
+
                     var previousStock = product.StockQuantity;
                     product.StockQuantity += ret.Quantity;
                     conn.Update(product);
@@ -97,37 +99,7 @@ namespace InventoryManagementSystem.Services
                 };
                 conn.Insert(movement);
 
-                int remainingToDeduct = ret.Quantity;
-                var batches = conn.Table<PurchaseBatch>()
-                                  .Where(b => b.ProductId == ret.ProductId && b.QuantityRemaining > 0)
-                                  .OrderBy(b => b.PurchaseDate)
-                                  .ThenBy(b => b.Id)
-                                  .ToList();
-
-                foreach (var batch in batches)
-                {
-                    if (remainingToDeduct <= 0) break;
-
-                    int deductFromThisBatch = Math.Min(batch.QuantityRemaining, remainingToDeduct);
-
-                    conn.Insert(new SaleBatchUsage
-                    {
-                        StockMovementId = movement.Id,
-                        PurchaseBatchId = batch.Id,
-                        QuantityUsed = deductFromThisBatch,
-                        CostPerUnit = batch.CostPerUnit
-                    });
-
-                    batch.QuantityRemaining -= deductFromThisBatch;
-                    conn.Update(batch);
-
-                    remainingToDeduct -= deductFromThisBatch;
-                }
-
-                if (remainingToDeduct > 0)
-                {
-                    throw new InvalidOperationException("Batches were out of sync with product stock. Return failed.");
-                }
+                BatchTrackingService.DeductBatchesOnIssue(conn, product, ret.Quantity, movement.Id);
 
                 var previousStock = product.StockQuantity;
                 product.StockQuantity -= ret.Quantity;
@@ -201,6 +173,8 @@ namespace InventoryManagementSystem.Services
                             UnitPrice = item.UnitPrice
                         };
                         conn.Insert(movement);
+
+                        BatchTrackingService.RestoreBatchesOnReturn(conn, product, ret.quantityToReturn, movement.Id, product.Cost);
 
                         var previousStock = product.StockQuantity;
                         product.StockQuantity += ret.quantityToReturn;
@@ -302,37 +276,7 @@ namespace InventoryManagementSystem.Services
                     };
                     conn.Insert(movement);
 
-                    int remainingToDeduct = ret.quantityToReturn;
-                    var batches = conn.Table<PurchaseBatch>()
-                                      .Where(b => b.ProductId == item.ProductId && b.QuantityRemaining > 0)
-                                      .OrderBy(b => b.PurchaseDate)
-                                      .ThenBy(b => b.Id)
-                                      .ToList();
-
-                    foreach (var batch in batches)
-                    {
-                        if (remainingToDeduct <= 0) break;
-
-                        int deductFromThisBatch = Math.Min(batch.QuantityRemaining, remainingToDeduct);
-
-                        conn.Insert(new SaleBatchUsage
-                        {
-                            StockMovementId = movement.Id,
-                            PurchaseBatchId = batch.Id,
-                            QuantityUsed = deductFromThisBatch,
-                            CostPerUnit = batch.CostPerUnit
-                        });
-
-                        batch.QuantityRemaining -= deductFromThisBatch;
-                        conn.Update(batch);
-
-                        remainingToDeduct -= deductFromThisBatch;
-                    }
-
-                    if (remainingToDeduct > 0)
-                    {
-                        throw new InvalidOperationException("Batches were out of sync with product stock. Return failed.");
-                    }
+                    BatchTrackingService.DeductBatchesOnIssue(conn, product, ret.quantityToReturn, movement.Id);
 
                     PostSupplierReturnJournal(conn, supplierReturn, product);
                     debitNotes.Add(CreateDebitNote(conn, po.SupplierId, supplierReturn.Id, purchaseOrderId, creditAmount, ret.reason, processedByUsername));
@@ -551,5 +495,89 @@ namespace InventoryManagementSystem.Services
                 .Where(d => !d.IsDeleted)
                 .OrderByDescending(d => d.IssueDate)
                 .ToListAsync();
+
+        public async Task<List<CreditNoteDisplayRow>> GetCreditNoteDisplayRowsAsync()
+        {
+            var notes = await GetCreditNotesAsync();
+            var customers = await _databaseService.Connection.Table<Customer>().ToListAsync();
+            var salesOrders = await _databaseService.Connection.Table<SalesOrder>().ToListAsync();
+            var returns = await _databaseService.Connection.Table<CustomerReturn>().ToListAsync();
+
+            return notes.Select(n =>
+            {
+                var customer = customers.FirstOrDefault(c => c.Id == n.CustomerId);
+                var so = n.SalesOrderId.HasValue
+                    ? salesOrders.FirstOrDefault(s => s.Id == n.SalesOrderId.Value)
+                    : null;
+                var ret = n.CustomerReturnId.HasValue
+                    ? returns.FirstOrDefault(r => r.Id == n.CustomerReturnId.Value)
+                    : null;
+
+                return new CreditNoteDisplayRow
+                {
+                    Note = n,
+                    CustomerName = customer?.Name ?? (n.CustomerId == 0 ? "Walk-in / POS" : $"Customer #{n.CustomerId}"),
+                    LinkedDocument = so?.SONumber ?? ret?.ReturnNumber ?? "—",
+                    LinkedReturnNumber = ret?.ReturnNumber ?? "—"
+                };
+            }).ToList();
+        }
+
+        public async Task<List<DebitNoteDisplayRow>> GetDebitNoteDisplayRowsAsync()
+        {
+            var notes = await GetDebitNotesAsync();
+            var suppliers = await _databaseService.Connection.Table<Supplier>().ToListAsync();
+            var purchaseOrders = await _databaseService.Connection.Table<PurchaseOrder>().ToListAsync();
+            var returns = await _databaseService.Connection.Table<SupplierReturn>().ToListAsync();
+
+            return notes.Select(n =>
+            {
+                var supplier = suppliers.FirstOrDefault(s => s.Id == n.SupplierId);
+                var po = n.PurchaseOrderId.HasValue
+                    ? purchaseOrders.FirstOrDefault(p => p.Id == n.PurchaseOrderId.Value)
+                    : null;
+                var ret = n.SupplierReturnId.HasValue
+                    ? returns.FirstOrDefault(r => r.Id == n.SupplierReturnId.Value)
+                    : null;
+
+                return new DebitNoteDisplayRow
+                {
+                    Note = n,
+                    SupplierName = supplier?.Name ?? $"Supplier #{n.SupplierId}",
+                    LinkedDocument = po?.PONumber ?? ret?.ReturnNumber ?? "—",
+                    LinkedReturnNumber = ret?.ReturnNumber ?? "—"
+                };
+            }).ToList();
+        }
+    }
+
+    public class CreditNoteDisplayRow
+    {
+        public CreditNote Note { get; set; } = new();
+        public string CustomerName { get; set; } = string.Empty;
+        public string LinkedDocument { get; set; } = string.Empty;
+        public string LinkedReturnNumber { get; set; } = string.Empty;
+
+        public string DocumentNumber => Note.CreditNoteNumber;
+        public DateTime IssueDate => Note.IssueDate;
+        public decimal Amount => Note.Amount;
+        public string Status => Note.Status;
+        public string Reason => Note.Reason;
+        public string CreatedBy => Note.CreatedByUsername;
+    }
+
+    public class DebitNoteDisplayRow
+    {
+        public DebitNote Note { get; set; } = new();
+        public string SupplierName { get; set; } = string.Empty;
+        public string LinkedDocument { get; set; } = string.Empty;
+        public string LinkedReturnNumber { get; set; } = string.Empty;
+
+        public string DocumentNumber => Note.DebitNoteNumber;
+        public DateTime IssueDate => Note.IssueDate;
+        public decimal Amount => Note.Amount;
+        public string Status => Note.Status;
+        public string Reason => Note.Reason;
+        public string CreatedBy => Note.CreatedByUsername;
     }
 }

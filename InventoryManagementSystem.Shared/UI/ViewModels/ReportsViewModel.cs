@@ -11,15 +11,41 @@ using InventoryManagementSystem.Services;
 
 namespace InventoryManagementSystem.UI.ViewModels
 {
+    public class ReportNavItem
+    {
+        public string Key { get; init; } = string.Empty;
+        public string Title { get; init; } = string.Empty;
+        public string Category { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+    }
+
     public partial class ReportsViewModel : ViewModelBase
     {
+        private static readonly ReportNavItem[] ReportCatalog =
+        {
+            new() { Key = "balance-sheet", Title = "Balance Sheet", Category = "Financial Statements", Description = "Assets, liabilities, and equity snapshot" },
+            new() { Key = "profit-loss", Title = "Profit & Loss", Category = "Financial Statements", Description = "Income and expenses for the period" },
+            new() { Key = "budget-vs-actual", Title = "Budget vs Actual", Category = "Financial Statements", Description = "Compare budgeted vs actual spending" },
+            new() { Key = "stock-status", Title = "Stock Status", Category = "Inventory", Description = "Current stock levels by product" },
+            new() { Key = "stock-history", Title = "Stock History", Category = "Inventory", Description = "Recent stock movement audit trail" },
+            new() { Key = "ar-aging", Title = "AR Aging", Category = "Receivables & Payables", Description = "Outstanding customer invoices by age" },
+            new() { Key = "ap-aging", Title = "AP Aging", Category = "Receivables & Payables", Description = "Outstanding vendor bills by age" },
+            new() { Key = "vat-return", Title = "VAT Return", Category = "Tax & Banking", Description = "Output vs input VAT for filing" },
+            new() { Key = "bank-reconciliation", Title = "Bank Reconciliation", Category = "Tax & Banking", Description = "Match payments to bank statements" },
+        };
+
         private readonly InventoryService _inventoryService;
         private readonly LicenseService _licenseService;
         private readonly SettingsService _settingsService;
         private readonly AccountingReportService _accountingReportService;
         private readonly AgingReportService _agingReportService;
+        private readonly VatExportService _vatExportService;
+        private readonly BudgetReportService _budgetReportService;
+        private readonly PaymentService _paymentService;
 
-        [ObservableProperty] private int _selectedTabIndex;
+        [ObservableProperty] private string _selectedCategory = "Financial Statements";
+        [ObservableProperty] private ReportNavItem? _selectedReportNavItem;
+        [ObservableProperty] private ObservableCollection<ReportNavItem> _reportsInCategory = new();
         [ObservableProperty] private ObservableCollection<ReportLineWrapper> _balanceSheetLines = new();
         [ObservableProperty] private ObservableCollection<ReportLineWrapper> _profitAndLossLines = new();
         [ObservableProperty] private ObservableCollection<AgingLine> _arAgingLines = new();
@@ -38,14 +64,76 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         public bool IsStockReport => !IsHistoryReport && !IsProfitReport;
 
-        public bool IsBalanceSheetSelected => SelectedTabIndex == 0;
-        public bool IsProfitAndLossSelected => SelectedTabIndex == 1;
-        public bool IsStockStatusSelected => SelectedTabIndex == 2;
-        public bool IsStockHistorySelected => SelectedTabIndex == 3;
-        public bool IsArAgingSelected => SelectedTabIndex == 4;
-        public bool IsApAgingSelected => SelectedTabIndex == 5;
+        public bool IsBalanceSheetSelected => SelectedReportNavItem?.Key == "balance-sheet";
+        public bool IsProfitAndLossSelected => SelectedReportNavItem?.Key == "profit-loss";
+        public bool IsStockStatusSelected => SelectedReportNavItem?.Key == "stock-status";
+        public bool IsStockHistorySelected => SelectedReportNavItem?.Key == "stock-history";
+        public bool IsArAgingSelected => SelectedReportNavItem?.Key == "ar-aging";
+        public bool IsApAgingSelected => SelectedReportNavItem?.Key == "ap-aging";
+        public bool IsVatReturnSelected => SelectedReportNavItem?.Key == "vat-return";
+        public bool IsBudgetVsActualSelected => SelectedReportNavItem?.Key == "budget-vs-actual";
+        public bool IsBankReconciliationSelected => SelectedReportNavItem?.Key == "bank-reconciliation";
 
-        partial void OnSelectedTabIndexChanged(int value)
+        public List<string> ReportCategories { get; } = ReportCatalog
+            .Select(r => r.Category)
+            .Distinct()
+            .ToList();
+
+        [ObservableProperty] private DateTime _vatPeriodStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        [ObservableProperty] private DateTime _vatPeriodEnd = DateTime.Today;
+        [ObservableProperty] private VatReturnSummary? _vatSummary;
+
+        [ObservableProperty] private int _budgetFiscalYear = DateTime.Today.Year;
+        [ObservableProperty] private int _budgetPeriodMonth;
+        [ObservableProperty] private ObservableCollection<BudgetVsActualLine> _budgetVsActualLines = new();
+        [ObservableProperty] private decimal _budgetTotalBudget;
+        [ObservableProperty] private decimal _budgetTotalActual;
+        [ObservableProperty] private decimal _budgetTotalVariance;
+
+        [ObservableProperty] private ObservableCollection<BankAccountDisplayRow> _reconBankAccounts = new();
+        [ObservableProperty] private BankAccountDisplayRow? _selectedReconBankAccount;
+        [ObservableProperty] private ObservableCollection<ReconciliationCandidate> _unreconciledPayments = new();
+        [ObservableProperty] private ObservableCollection<ReconciliationCandidate> _unreconciledStatementLines = new();
+        [ObservableProperty] private ReconciliationCandidate? _selectedReconPayment;
+        [ObservableProperty] private ReconciliationCandidate? _selectedReconLine;
+        [ObservableProperty] private string _reconStatusMessage = string.Empty;
+
+        [ObservableProperty] private bool _isImportStatementModalOpen;
+        [ObservableProperty] private DateTime _importStatementDate = DateTime.Today;
+        [ObservableProperty] private decimal _importOpeningBalance;
+        [ObservableProperty] private decimal _importClosingBalance;
+        [ObservableProperty] private DateTime _importLineDate = DateTime.Today;
+        [ObservableProperty] private string _importLineDescription = string.Empty;
+        [ObservableProperty] private decimal _importLineAmount;
+        [ObservableProperty] private string _importLineReference = string.Empty;
+        [ObservableProperty] private string _importErrorMessage = string.Empty;
+
+        partial void OnSelectedCategoryChanged(string value)
+        {
+            RefreshReportsInCategory();
+        }
+
+        partial void OnSelectedReportNavItemChanged(ReportNavItem? value)
+        {
+            NotifyReportSelectionProperties();
+            if (value != null)
+            {
+                ReportTitle = value.Title;
+                _ = LoadSelectedReportAsync();
+            }
+        }
+
+        private void RefreshReportsInCategory()
+        {
+            var items = ReportCatalog
+                .Where(r => r.Category == SelectedCategory)
+                .ToList();
+
+            ReportsInCategory = new ObservableCollection<ReportNavItem>(items);
+            SelectedReportNavItem = items.FirstOrDefault();
+        }
+
+        private void NotifyReportSelectionProperties()
         {
             OnPropertyChanged(nameof(IsBalanceSheetSelected));
             OnPropertyChanged(nameof(IsProfitAndLossSelected));
@@ -53,7 +141,17 @@ namespace InventoryManagementSystem.UI.ViewModels
             OnPropertyChanged(nameof(IsStockHistorySelected));
             OnPropertyChanged(nameof(IsArAgingSelected));
             OnPropertyChanged(nameof(IsApAgingSelected));
-            _ = LoadSelectedReportAsync();
+            OnPropertyChanged(nameof(IsVatReturnSelected));
+            OnPropertyChanged(nameof(IsBudgetVsActualSelected));
+            OnPropertyChanged(nameof(IsBankReconciliationSelected));
+        }
+
+        partial void OnSelectedReconBankAccountChanged(BankAccountDisplayRow? value)
+        {
+            if (IsBankReconciliationSelected)
+            {
+                _ = LoadBankReconciliationAsync();
+            }
         }
 
         public string CurrencySymbol => _settingsService.CurrentSettings.CurrencySymbol;
@@ -65,7 +163,10 @@ namespace InventoryManagementSystem.UI.ViewModels
             SettingsService settingsService, 
             LanguageService languageService,
             AccountingReportService accountingReportService,
-            AgingReportService agingReportService)
+            AgingReportService agingReportService,
+            VatExportService vatExportService,
+            BudgetReportService budgetReportService,
+            PaymentService paymentService)
         {
             _inventoryService = inventoryService;
             _licenseService = licenseService;
@@ -73,9 +174,11 @@ namespace InventoryManagementSystem.UI.ViewModels
             Language = languageService;
             _accountingReportService = accountingReportService;
             _agingReportService = agingReportService;
-            
-            SelectedTabIndex = 0; // Default to Balance Sheet
-            _ = LoadSelectedReportAsync();
+            _vatExportService = vatExportService;
+            _budgetReportService = budgetReportService;
+            _paymentService = paymentService;
+
+            RefreshReportsInCategory();
         }
 
         public async Task LoadSelectedReportAsync()
@@ -83,32 +186,38 @@ namespace InventoryManagementSystem.UI.ViewModels
             IsLoadingReport = true;
             try
             {
-                if (SelectedTabIndex == 0)
+                switch (SelectedReportNavItem?.Key)
                 {
-                    await LoadBalanceSheetAsync();
-                }
-                else if (SelectedTabIndex == 1)
-                {
-                    await LoadProfitAndLossAsync();
-                }
-                else if (SelectedTabIndex == 2)
-                {
-                    if (IsLowStockReport)
-                        await LoadLowStockReport();
-                    else
-                        await LoadStockReport();
-                }
-                else if (SelectedTabIndex == 3)
-                {
-                    await LoadStockHistoryReport();
-                }
-                else if (SelectedTabIndex == 4)
-                {
-                    await LoadArAgingAsync();
-                }
-                else if (SelectedTabIndex == 5)
-                {
-                    await LoadApAgingAsync();
+                    case "balance-sheet":
+                        await LoadBalanceSheetAsync();
+                        break;
+                    case "profit-loss":
+                        await LoadProfitAndLossAsync();
+                        break;
+                    case "stock-status":
+                        if (IsLowStockReport)
+                            await LoadLowStockReport();
+                        else
+                            await LoadStockReport();
+                        break;
+                    case "stock-history":
+                        await LoadStockHistoryReport();
+                        break;
+                    case "ar-aging":
+                        await LoadArAgingAsync();
+                        break;
+                    case "ap-aging":
+                        await LoadApAgingAsync();
+                        break;
+                    case "vat-return":
+                        await LoadVatReturnAsync();
+                        break;
+                    case "budget-vs-actual":
+                        await LoadBudgetVsActualAsync();
+                        break;
+                    case "bank-reconciliation":
+                        await LoadBankReconciliationAsync();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -237,6 +346,184 @@ namespace InventoryManagementSystem.UI.ViewModels
             var lines = await _agingReportService.GetAccountsPayableAgingAsync();
             ApAgingLines = new ObservableCollection<AgingLine>(lines);
             ApAgingSummary = _agingReportService.Summarize(lines);
+        }
+
+        [RelayCommand]
+        private async Task LoadVatReturnAsync()
+        {
+            ReportTitle = $"VAT Return ({VatPeriodStart:yyyy-MM-dd} to {VatPeriodEnd:yyyy-MM-dd})";
+            VatSummary = await _vatExportService.ComputeVatReturnAsync(VatPeriodStart, VatPeriodEnd);
+        }
+
+        [RelayCommand]
+        private async Task LoadBudgetVsActualAsync()
+        {
+            ReportTitle = $"Budget vs Actual — FY {BudgetFiscalYear}";
+            int? month = BudgetPeriodMonth is >= 1 and <= 12 ? BudgetPeriodMonth : null;
+            var lines = await _budgetReportService.GetBudgetVsActualAsync(BudgetFiscalYear, month);
+            BudgetVsActualLines = new ObservableCollection<BudgetVsActualLine>(lines);
+            BudgetTotalBudget = lines.Sum(l => l.BudgetAmount);
+            BudgetTotalActual = lines.Sum(l => l.ActualAmount);
+            BudgetTotalVariance = lines.Sum(l => l.Variance);
+        }
+
+        [RelayCommand]
+        private async Task LoadBankReconciliationAsync()
+        {
+            ReportTitle = "Bank Reconciliation";
+            ReconStatusMessage = string.Empty;
+
+            var banks = await _paymentService.GetAllBanksAsync();
+            var accounts = await _paymentService.GetAllBankAccountsAsync();
+            ReconBankAccounts = new ObservableCollection<BankAccountDisplayRow>(
+                accounts.Select(a => new BankAccountDisplayRow
+                {
+                    Account = a,
+                    BankName = banks.FirstOrDefault(b => b.Id == a.BankId)?.Name ?? "Unknown Bank"
+                }));
+
+            if (SelectedReconBankAccount == null && ReconBankAccounts.Count > 0)
+            {
+                SelectedReconBankAccount = ReconBankAccounts[0];
+            }
+
+            if (SelectedReconBankAccount == null)
+            {
+                ReconStatusMessage = "Add a bank account in Settings → Payments Setup first.";
+                UnreconciledPayments = new ObservableCollection<ReconciliationCandidate>();
+                UnreconciledStatementLines = new ObservableCollection<ReconciliationCandidate>();
+                return;
+            }
+
+            var payments = await _paymentService.GetUnreconciledPaymentsAsync(SelectedReconBankAccount.Id);
+            var lines = await _paymentService.GetUnreconciledStatementLinesAsync(SelectedReconBankAccount.Id);
+            UnreconciledPayments = new ObservableCollection<ReconciliationCandidate>(payments);
+            UnreconciledStatementLines = new ObservableCollection<ReconciliationCandidate>(lines);
+            ReconStatusMessage = $"{payments.Count} unreconciled payment(s), {lines.Count} unreconciled statement line(s).";
+        }
+
+        [RelayCommand]
+        private void OpenImportStatement()
+        {
+            if (SelectedReconBankAccount == null)
+            {
+                ReconStatusMessage = "Select a bank account first.";
+                return;
+            }
+
+            ImportStatementDate = DateTime.Today;
+            ImportOpeningBalance = 0;
+            ImportClosingBalance = 0;
+            ImportLineDate = DateTime.Today;
+            ImportLineDescription = string.Empty;
+            ImportLineAmount = 0;
+            ImportLineReference = string.Empty;
+            ImportErrorMessage = string.Empty;
+            IsImportStatementModalOpen = true;
+        }
+
+        [RelayCommand]
+        private async Task SubmitImportStatement()
+        {
+            ImportErrorMessage = string.Empty;
+            if (SelectedReconBankAccount == null)
+            {
+                ImportErrorMessage = "Select a bank account first.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ImportLineDescription))
+            {
+                ImportErrorMessage = "Line description is required.";
+                return;
+            }
+
+            if (ImportLineAmount == 0)
+            {
+                ImportErrorMessage = "Line amount cannot be zero.";
+                return;
+            }
+
+            try
+            {
+                await _paymentService.ImportBankStatementAsync(
+                    SelectedReconBankAccount.Id,
+                    ImportStatementDate,
+                    ImportOpeningBalance,
+                    ImportClosingBalance,
+                    new[] { (ImportLineDate, ImportLineDescription.Trim(), ImportLineAmount, ImportLineReference.Trim()) });
+
+                IsImportStatementModalOpen = false;
+                ReconStatusMessage = "Bank statement imported.";
+                await LoadBankReconciliationAsync();
+            }
+            catch (Exception ex)
+            {
+                ImportErrorMessage = ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        private void CloseImportStatement()
+        {
+            IsImportStatementModalOpen = false;
+        }
+
+        [RelayCommand]
+        private async Task MatchReconciliation()
+        {
+            ReconStatusMessage = string.Empty;
+            if (SelectedReconPayment?.Payment == null || SelectedReconLine?.StatementLine == null)
+            {
+                ReconStatusMessage = "Select one payment and one statement line to match.";
+                return;
+            }
+
+            try
+            {
+                await _paymentService.MatchPaymentToStatementLineAsync(
+                    SelectedReconPayment.Payment.Id,
+                    SelectedReconLine.StatementLine.Id,
+                    UserSession.CurrentUser?.Username ?? "System");
+                ReconStatusMessage = "Payment matched to bank statement line.";
+                await LoadBankReconciliationAsync();
+            }
+            catch (Exception ex)
+            {
+                ReconStatusMessage = ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        private async Task ExportVatToCsv()
+        {
+            if (VatSummary == null)
+            {
+                await LoadVatReturnAsync();
+            }
+
+            if (VatSummary == null) return;
+
+            if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+            {
+                ReportTitle = "Error: Cannot access file system.";
+                return;
+            }
+
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var file = await storageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Save VAT Return As",
+                DefaultExtension = ".csv",
+                SuggestedFileName = $"VAT_Return_{VatPeriodStart:yyyyMMdd}_{VatPeriodEnd:yyyyMMdd}",
+                FileTypeChoices = new[] { new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = new[] { "*.csv" } } }
+            });
+
+            if (file == null) return;
+
+            var csv = _vatExportService.BuildVatReturnCsv(VatSummary);
+            await File.WriteAllTextAsync(file.Path.LocalPath, csv);
+            ReportTitle += " (VAT Exported)";
         }
 
         [RelayCommand]

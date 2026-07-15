@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,10 +20,15 @@ public partial class ReturnsViewModel : ViewModelBase
     [ObservableProperty] private string _reason = "";
     [ObservableProperty] private string _condition = "Resaleable";
     [ObservableProperty] private decimal _refundAmount;
+    [ObservableProperty] private CreditNoteDisplayRow? _selectedCreditNote;
+    [ObservableProperty] private DebitNoteDisplayRow? _selectedDebitNote;
+    [ObservableProperty] private string _statusMessage = string.Empty;
 
     public ObservableCollection<Product> Products { get; } = new();
     public ObservableCollection<CustomerReturn> RecentReturns { get; } = new();
     public ObservableCollection<SupplierReturn> RecentSupplierReturns { get; } = new();
+    public ObservableCollection<CreditNoteDisplayRow> CreditNotes { get; } = new();
+    public ObservableCollection<DebitNoteDisplayRow> DebitNotes { get; } = new();
 
     public ReturnsViewModel(ReturnsService returnsService, InventoryService inventoryService)
     {
@@ -45,6 +51,14 @@ public partial class ReturnsViewModel : ViewModelBase
         RecentSupplierReturns.Clear();
         var supplierReturns = await _returnsService.GetSupplierReturnsAsync(DateTime.Now.AddDays(-30), DateTime.Now);
         foreach (var r in supplierReturns) RecentSupplierReturns.Add(r);
+
+        CreditNotes.Clear();
+        var creditRows = await _returnsService.GetCreditNoteDisplayRowsAsync();
+        foreach (var row in creditRows) CreditNotes.Add(row);
+
+        DebitNotes.Clear();
+        var debitRows = await _returnsService.GetDebitNoteDisplayRowsAsync();
+        foreach (var row in debitRows) DebitNotes.Add(row);
 
         IsLoading = false;
     }
@@ -70,6 +84,59 @@ public partial class ReturnsViewModel : ViewModelBase
         Quantity = 0;
         Reason = "";
         RefundAmount = 0;
+        StatusMessage = $"Return {ret.ReturnNumber} processed.";
         await LoadInitialData();
+    }
+
+    [RelayCommand]
+    private async Task PrintCreditNote(CreditNoteDisplayRow? row)
+    {
+        row ??= SelectedCreditNote;
+        if (row == null) return;
+
+        var path = await WriteNoteFileAsync(
+            row.DocumentNumber,
+            $"Credit Note: {row.DocumentNumber}",
+            $"Customer: {row.CustomerName}",
+            $"Linked: {row.LinkedDocument}",
+            $"Return: {row.LinkedReturnNumber}",
+            $"Amount: {row.Amount:N2}",
+            $"Date: {row.IssueDate:yyyy-MM-dd}",
+            $"Reason: {row.Reason}",
+            $"Status: {row.Status}",
+            $"Created by: {row.CreatedBy}");
+
+        StatusMessage = $"Saved credit note to {path}";
+    }
+
+    [RelayCommand]
+    private async Task PrintDebitNote(DebitNoteDisplayRow? row)
+    {
+        row ??= SelectedDebitNote;
+        if (row == null) return;
+
+        var path = await WriteNoteFileAsync(
+            row.DocumentNumber,
+            $"Debit Note: {row.DocumentNumber}",
+            $"Supplier: {row.SupplierName}",
+            $"Linked: {row.LinkedDocument}",
+            $"Return: {row.LinkedReturnNumber}",
+            $"Amount: {row.Amount:N2}",
+            $"Date: {row.IssueDate:yyyy-MM-dd}",
+            $"Reason: {row.Reason}",
+            $"Status: {row.Status}",
+            $"Created by: {row.CreatedBy}");
+
+        StatusMessage = $"Saved debit note to {path}";
+    }
+
+    private static async Task<string> WriteNoteFileAsync(string docNumber, params string[] lines)
+    {
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "InventoryManagementSystem", "Notes");
+        Directory.CreateDirectory(dir);
+        var safeName = docNumber.Replace('/', '-').Replace('\\', '-');
+        var path = Path.Combine(dir, $"{safeName}.txt");
+        await File.WriteAllTextAsync(path, string.Join(Environment.NewLine, lines));
+        return path;
     }
 }

@@ -40,6 +40,10 @@ public partial class MainViewModel : ViewModelBase
     private readonly CustomerService _customerService;
     private readonly BarcodeService _barcodeService;
     private readonly AgingReportService _agingReportService;
+    private readonly VatExportService _vatExportService;
+    private readonly BudgetReportService _budgetReportService;
+    private readonly CurrencyService _currencyService;
+    private readonly CycleCountService _cycleCountService;
 
     public IndustryTemplateService IndustryTemplateService => _industryTemplateService;
     public CustomFieldService CustomFieldService => _customFieldService;
@@ -114,7 +118,11 @@ public partial class MainViewModel : ViewModelBase
         CustomFieldService customFieldService,
         CustomerService customerService,
         BarcodeService barcodeService,
-        AgingReportService agingReportService)
+        AgingReportService agingReportService,
+        VatExportService vatExportService,
+        BudgetReportService budgetReportService,
+        CurrencyService currencyService,
+        CycleCountService cycleCountService)
     {
         _inventoryService = inventoryService;
         _userService = userService;
@@ -149,6 +157,10 @@ public partial class MainViewModel : ViewModelBase
         _customerService = customerService;
         _barcodeService = barcodeService;
         _agingReportService = agingReportService;
+        _vatExportService = vatExportService;
+        _budgetReportService = budgetReportService;
+        _currencyService = currencyService;
+        _cycleCountService = cycleCountService;
 
         // Check for updates on startup (fire and forget, silent)
         _ = CheckForUpdatesInternal(false);
@@ -502,7 +514,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language, _taxService, _accountService, GoToRfq, GoToPurchaseOrders, GoToSuppliers, GoToSalesQuotations, GoToSalesOrders, GoToCustomers, CustomFieldService, _barcodeService));
+    public void GoToInventory() => NavigateTo(new InventoryViewModel(_inventoryService, _licenseService, _settingsService, Language, _taxService, _accountService, GoToRfq, GoToPurchaseOrders, GoToSuppliers, GoToSalesQuotations, GoToSalesOrders, GoToCustomers, GoToCycleCount, GoToReorderDashboard, GoToForecasting, GoToLocations, CustomFieldService, _barcodeService));
 
     [RelayCommand]
     public void GoToManufacturing() => NavigateTo(new ManufacturingViewModel(_manufacturingService, _inventoryService, Language));
@@ -528,19 +540,19 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        NavigateTo(new PurchaseOrdersViewModel(_purchaseOrderService, _supplierService, _inventoryService, _taxService, _settingsService, _returnsService, Language));
+        NavigateTo(new PurchaseOrdersViewModel(_purchaseOrderService, _supplierService, _inventoryService, _taxService, _settingsService, _returnsService, _paymentService, _currencyService, Language));
     }
 
     [RelayCommand]
     public void GoToSalesQuotations()
     {
-        NavigateTo(new SalesViewModel(_salesOrderService, _customerService, _inventoryService, _taxService, _settingsService, _returnsService, Language, initialTab: 0));
+        NavigateTo(new SalesViewModel(_salesOrderService, _customerService, _inventoryService, _taxService, _settingsService, _returnsService, _paymentService, _currencyService, Language, initialTab: 0));
     }
 
     [RelayCommand]
     public void GoToSalesOrders()
     {
-        NavigateTo(new SalesViewModel(_salesOrderService, _customerService, _inventoryService, _taxService, _settingsService, _returnsService, Language, initialTab: 1));
+        NavigateTo(new SalesViewModel(_salesOrderService, _customerService, _inventoryService, _taxService, _settingsService, _returnsService, _paymentService, _currencyService, Language, initialTab: 1));
     }
 
     [RelayCommand]
@@ -558,7 +570,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense(); 
             return;
         }
-        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService, _settingsService, Language, _accountingReportService, _agingReportService));
+        NavigateTo(new ReportsViewModel(_inventoryService, _licenseService, _settingsService, Language, _accountingReportService, _agingReportService, _vatExportService, _budgetReportService, _paymentService));
     }
 
     [RelayCommand]
@@ -570,7 +582,7 @@ public partial class MainViewModel : ViewModelBase
             GoToLicense();
             return;
         }
-        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService, _settingsService, Language, _salesOrderService, _customerService, _journalService, _taxService, _barcodeService));
+        NavigateTo(new POSViewModel(_inventoryService, _licenseService, _receiptService, _settingsService, Language, _salesOrderService, _customerService, _journalService, _taxService, _barcodeService, _currencyService));
     }
 
     [RelayCommand]
@@ -598,7 +610,7 @@ public partial class MainViewModel : ViewModelBase
     public void GoToSettings()
     {
         if (!CanAccessSettings) return;
-        NavigateTo(new SettingsViewModel(_settingsService, Language, _taxService, _accountService, _journalService, _accountingReportService, _paymentService, _customFieldService, RunSetupWizardFromSettings, RefreshModuleGatedAccessProperties));
+        NavigateTo(new SettingsViewModel(_settingsService, Language, _taxService, _accountService, _journalService, _accountingReportService, _paymentService, _customFieldService, _currencyService, _budgetReportService, RunSetupWizardFromSettings, RefreshModuleGatedAccessProperties));
     }
 
     [RelayCommand]
@@ -637,6 +649,18 @@ public partial class MainViewModel : ViewModelBase
         }
 
         NavigateTo(new ReorderDashboardViewModel(_forecastingService, _purchaseOrderService));
+    }
+
+    [RelayCommand]
+    public void GoToCycleCount()
+    {
+        if (!_licenseService.CanAccessMultiLocation())
+        {
+            GoToLicense();
+            return;
+        }
+
+        NavigateTo(new CycleCountViewModel(_cycleCountService, _locationService, _inventoryService));
     }
 
     [RelayCommand]

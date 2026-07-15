@@ -35,6 +35,8 @@
                                             </StackPanel>
 
                                             <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding LocationName, StringFormat='Location: {0}'}" FontSize="12" Foreground="#111827"/>
+                                                <TextBlock Text="{Binding LocationStockQuantity, StringFormat='Stock: {0}'}" FontSize="12" Foreground="#6B7280"/>
                                                 <TextBlock Text="{Binding DaysUntilStockout, StringFormat='Days until stockout: {0}'}" FontSize="12" Foreground="#111827"/>
                                                 <TextBlock Text="{Binding ThresholdDays, StringFormat='Threshold: {0}'}" FontSize="12" Foreground="#6B7280"/>
                                             </StackPanel>

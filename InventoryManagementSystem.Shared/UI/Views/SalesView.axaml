@@ -508,6 +508,37 @@
                                 <TextBlock Text="{Binding DetailedSo.Notes}" IsVisible="{Binding DetailedSo.Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" FontStyle="Italic" TextWrapping="Wrap"/>
                                 <TextBlock Text="No additional notes." IsVisible="{Binding DetailedSo.Notes, Converter={x:Static StringConverters.IsNullOrEmpty}}" FontStyle="Italic" Foreground="Gray"/>
                             </StackPanel>
+
+                            <!-- Payments section (invoiced orders only) -->
+                            <StackPanel Spacing="8" Margin="0,10,0,0" IsVisible="{Binding IsDetailedSoInvoiced}">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Text="Invoice Payments" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="Record Payment" Command="{Binding OpenRecordPaymentCommand}" IsEnabled="{Binding CanRecordPayment}" Background="#2E7D32" Foreground="White" Padding="10,6"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto, Auto, Auto">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,20,0">
+                                        <TextBlock Text="Paid:" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding DetailedAmountPaid, StringFormat='{}{0:N2}'}"/>
+                                        <TextBlock Text="{Binding DetailedSo.Currency}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,0,20,0">
+                                        <TextBlock Text="Open Balance:" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding DetailedOpenBalance, StringFormat='{}{0:N2}'}" Foreground="#D32F2F" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding DetailedSo.Currency}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="4">
+                                    <DataGrid ItemsSource="{Binding DetailedPayments}" AutoGenerateColumns="False" IsReadOnly="True" Height="140">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Payment #" Binding="{Binding PaymentNumber}" Width="130"/>
+                                            <DataGridTextColumn Header="Date" Binding="{Binding PaymentDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                                            <DataGridTextColumn Header="Method" Binding="{Binding PaymentMethod}" Width="100"/>
+                                            <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*"/>
+                                            <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="110"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -526,6 +557,7 @@
                                     <TextBlock Text="{Binding DetailedTotal, StringFormat='{}{0:N2}'}" FontSize="18" FontWeight="Bold" Foreground="#007ACC" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding DetailedSo.Currency}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                                 </StackPanel>
+                                <TextBlock Text="{Binding DetailedBaseCurrencyEquivalent}" FontSize="12" Foreground="Gray" IsVisible="{Binding DetailedBaseCurrencyEquivalent, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             </StackPanel>
                             
                             <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
@@ -647,6 +679,32 @@
                         <Button Content="Confirm Return" Command="{Binding SubmitReturnCommand}" Background="#f44336" Foreground="White" Padding="12,6" CornerRadius="4" FontSize="12" FontWeight="SemiBold"/>
                     </StackPanel>
                 </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Record Payment Modal -->
+        <Grid Background="#B0000000" IsVisible="{Binding IsPaymentModalOpen}" ZIndex="25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Width="420" Padding="20" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Record Invoice Payment" FontSize="16" FontWeight="Bold" Foreground="#2E7D32"/>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Amount" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding PaymentAmount}"/>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Payment Method" FontSize="12" FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding PaymentMethod}" HorizontalAlignment="Stretch"/>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Reference" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding PaymentReference}" Watermark="Check #, transfer ref, etc."/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding PaymentErrorMessage}" Foreground="Red" FontSize="11"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding ClosePaymentModalCommand}" Background="#757575" Foreground="White" Padding="12,6"/>
+                        <Button Content="Record Payment" Command="{Binding SubmitPaymentCommand}" Background="#2E7D32" Foreground="White" Padding="12,6" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
             </Border>
         </Grid>
     </Grid>

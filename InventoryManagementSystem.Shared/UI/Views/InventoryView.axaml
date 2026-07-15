@@ -35,6 +35,16 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
+                    <Button Content="Inventory Depth ▾" Background="#5E35B1" Foreground="White" Padding="12,6" FontWeight="SemiBold" CornerRadius="4">
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuItem Header="Cycle Counts" Command="{Binding GoToCycleCountScreenCommand}"/>
+                                <MenuItem Header="Reorder Dashboard" Command="{Binding GoToReorderDashboardScreenCommand}"/>
+                                <MenuItem Header="Forecasting" Command="{Binding GoToForecastingScreenCommand}"/>
+                                <MenuItem Header="Locations" Command="{Binding GoToLocationsScreenCommand}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
             </Border>
 
@@ -80,10 +90,11 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     
-                    <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_Actions]}" Width="190">
+                    <DataGridTemplateColumn Header="{Binding Language.Resources[Inv_Actions]}" Width="250">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <Button Content="History" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenProductHistoryCommand}" CommandParameter="{Binding .}" Background="#5C6BC0" Foreground="White" FontSize="10" Padding="6,3" CornerRadius="3"/>
                                     <Button Content="Stock" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenStockPaneCommand}" CommandParameter="{Binding .}" Background="#F57C00" Foreground="White" FontSize="10" Padding="6,3" CornerRadius="3"/>
                                     <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).OpenEditProductPaneCommand}" CommandParameter="{Binding .}" FontSize="10" Padding="6,3" CornerRadius="3"/>
                                     <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:InventoryViewModel)DataContext).DeleteProductCommand}" CommandParameter="{Binding .}" Background="#D32F2F" Foreground="White" FontSize="10" Padding="6,3" CornerRadius="3"/>
@@ -279,6 +290,18 @@
                                     <TextBlock Text="{Binding Language.Resources[Inv_SellingPrice]}" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBox Watermark="{Binding Language.Resources[Inv_SellingPrice]}" Text="{Binding AdjustmentUnitPrice}" />
                                 </StackPanel>
+
+                                <StackPanel IsVisible="{Binding ShowBatchFields}" Spacing="5">
+                                    <TextBlock Text="Lot / Batch Number" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBox Watermark="Required for lot-tracked products" Text="{Binding AdjustmentBatchNumber}"/>
+                                    <TextBlock Text="Expiry Date" FontSize="12" FontWeight="SemiBold"/>
+                                    <DatePicker SelectedDate="{Binding AdjustmentExpiryDate}"/>
+                                </StackPanel>
+
+                                <StackPanel IsVisible="{Binding ShowSerialFields}" Spacing="5">
+                                    <TextBlock Text="Serial Numbers (comma-separated)" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBox Watermark="SN-001, SN-002" Text="{Binding AdjustmentSerialNumbers}" AcceptsReturn="True" MinHeight="60"/>
+                                </StackPanel>
                                 
                                 <TextBlock Text="{Binding Language.Resources[Inv_Reason]}" FontSize="12" FontWeight="SemiBold"/>
                                 <TextBox Watermark="{Binding Language.Resources[Inv_Reason]}" Text="{Binding AdjustmentReason}" />
@@ -472,6 +495,63 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Product Transaction History Modal -->
+        <Grid Background="#7F000000" IsVisible="{Binding IsHistoryModalOpen}" ZIndex="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" MinWidth="900" MinHeight="520" Width="1100" Height="640"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24" BoxShadow="0 10 40 0 #44000000">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Product Transaction History" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding HistoryProductTitle}" FontSize="14" Foreground="#007ACC" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="✕" Command="{Binding CloseHistoryModalCommand}" Background="Transparent" BorderThickness="0" FontSize="16"/>
+                    </Grid>
+                    <TextBlock Grid.Row="1" Text="{Binding HistoryStatusMessage}" Foreground="Gray" FontSize="12" Margin="0,8,0,12"/>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="*,16,*">
+                        <StackPanel Grid.Column="0" Spacing="8">
+                            <TextBlock Text="Stock Movements" FontWeight="SemiBold"/>
+                            <DataGrid ItemsSource="{Binding ProductHistoryEvents}" SelectedItem="{Binding SelectedHistoryEvent}" AutoGenerateColumns="False" IsReadOnly="True" Height="420">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding Movement.Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="130"/>
+                                    <DataGridTextColumn Header="Type" Binding="{Binding Category}" Width="110"/>
+                                    <DataGridTextColumn Header="Qty" Binding="{Binding QuantityDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="Document" Binding="{Binding DocumentReference}" Width="100"/>
+                                    <DataGridTextColumn Header="Reason" Binding="{Binding Movement.Reason}" Width="*"/>
+                                    <DataGridTextColumn Header="User" Binding="{Binding Movement.Username}" Width="90"/>
+                                    <DataGridTextColumn Header="Journals" Binding="{Binding JournalLineCount}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Spacing="8">
+                            <TextBlock Text="Linked Journal Entries" FontWeight="SemiBold"/>
+                            <TextBlock Text="Select a movement on the left to see sales, purchase, adjustment, and other GL postings." FontSize="11" Foreground="Gray" TextWrapping="Wrap"/>
+                            <DataGrid ItemsSource="{Binding HistoryJournalLines}" AutoGenerateColumns="False" IsReadOnly="True" Height="360">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:yyyy-MM-dd}'}" Width="100"/>
+                                    <DataGridTextColumn Header="Entry" Binding="{Binding EntryNumber}" Width="110"/>
+                                    <DataGridTextColumn Header="Account" Binding="{Binding AccountDisplay}" Width="*"/>
+                                    <DataGridTextColumn Header="Partner" Binding="{Binding PartnerName}" Width="100"/>
+                                    <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="*"/>
+                                    <DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat='{}{0:N2}'}" Width="80"/>
+                                    <DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat='{}{0:N2}'}" Width="80"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <StackPanel Orientation="Horizontal" Spacing="20">
+                                <TextBlock Text="{Binding HistoryJournalTotalDebit, StringFormat='Total Debit: {0:N2}'}"/>
+                                <TextBlock Text="{Binding HistoryJournalTotalCredit, StringFormat='Total Credit: {0:N2}'}"/>
+                                <TextBlock Text="{Binding CurrencySymbol}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <Button Grid.Row="3" Content="Close" Command="{Binding CloseHistoryModalCommand}" HorizontalAlignment="Right" Margin="0,16,0,0" Width="100"/>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

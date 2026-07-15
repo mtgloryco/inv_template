@@ -67,6 +67,12 @@ namespace InventoryManagementSystem.UI.ViewModels
         private string _company = "My Company";
 
         [ObservableProperty]
+        private double _yieldPercent = 100.0;
+
+        [ObservableProperty]
+        private double _scrapPercent = 0.0;
+
+        [ObservableProperty]
         private ObservableCollection<BomLineViewModel> _componentLines = new();
 
         public List<string> BomTypes { get; } = new() { "Manufacture this product", "Kit" };
@@ -278,6 +284,8 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(IsManufactureType));
                 OnPropertyChanged(nameof(IsKitType));
                 Company = _editingBom.Company;
+                YieldPercent = _editingBom.YieldPercent;
+                ScrapPercent = _editingBom.ScrapPercent;
 
                 ComponentLines.Clear();
                 var lines = await _manufacturingService.GetBomLinesAsync(_editingBom.Id);
@@ -288,7 +296,8 @@ namespace InventoryManagementSystem.UI.ViewModels
                     {
                         SelectedProduct = product,
                         Quantity = line.Quantity,
-                        Unit = line.Unit
+                        Unit = line.Unit,
+                        ScrapPercent = line.ScrapPercent
                     });
                 }
 
@@ -368,12 +377,15 @@ namespace InventoryManagementSystem.UI.ViewModels
                 bom.Reference = Reference;
                 bom.BomType = SelectedBomType;
                 bom.Company = Company;
+                bom.YieldPercent = YieldPercent;
+                bom.ScrapPercent = ScrapPercent;
 
                 var lines = ComponentLines.Select(cl => new BillOfMaterialLine
                 {
                     ProductId = cl.SelectedProduct!.Id,
                     Quantity = cl.Quantity,
-                    Unit = cl.Unit
+                    Unit = cl.Unit,
+                    ScrapPercent = cl.ScrapPercent
                 }).ToList();
 
                 await _manufacturingService.SaveBomAsync(bom, lines);
@@ -455,7 +467,7 @@ namespace InventoryManagementSystem.UI.ViewModels
             try
             {
                 MOComponentLines.Clear();
-                var lines = await _manufacturingService.GetBomLinesAsync(bomId);
+                var lines = await _manufacturingService.BuildExpectedLinesFromBomAsync(bomId, MOTargetQuantity);
                 foreach (var line in lines)
                 {
                     var product = Products.FirstOrDefault(p => p.Id == line.ProductId);
@@ -463,10 +475,10 @@ namespace InventoryManagementSystem.UI.ViewModels
                     {
                         ProductId = line.ProductId,
                         ProductName = product?.Name ?? "Unknown Product",
-                        ExpectedQuantity = line.Quantity,
-                        ActualQuantity = line.Quantity,
+                        ExpectedQuantity = line.ExpectedQuantity,
+                        ActualQuantity = line.ActualQuantity,
                         Unit = line.Unit,
-                        UnitCost = product?.Cost ?? 0m
+                        UnitCost = line.UnitCost
                     });
                 }
             }
@@ -818,6 +830,9 @@ namespace InventoryManagementSystem.UI.ViewModels
 
         [ObservableProperty]
         private string _unit = "Pcs";
+
+        [ObservableProperty]
+        private double _scrapPercent;
 
         public ObservableCollection<Product> Products { get; }
         public List<string> Units { get; }

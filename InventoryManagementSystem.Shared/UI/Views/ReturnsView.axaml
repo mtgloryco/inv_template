@@ -7,14 +7,16 @@
              x:Class="InventoryManagementSystem.UI.Views.ReturnsView"
              x:DataType="vm:ReturnsViewModel">
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, Auto, *">
         <!-- Header -->
         <Border Grid.Row="0" Background="#f44336" Padding="20">
             <TextBlock Text="Returns &amp; Refunds" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*, 350" Margin="10">
-            <!-- Recent Returns -->
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Margin="15,8,15,0" Foreground="#2E7D32" FontSize="12"/>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*, 350" Margin="10">
+            <!-- Registers -->
             <Border Grid.Column="0" Margin="5" Padding="15" Background="{DynamicResource SystemControlBackgroundAltHighBrush}" CornerRadius="8">
                 <TabControl>
                     <TabItem Header="Customer Returns">
@@ -39,6 +41,44 @@
                                     <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/>
                                     <DataGridTextColumn Header="Credit Amount" Binding="{Binding CreditAmount}" Width="100"/>
                                     <DataGridTextColumn Header="PO Ref" Binding="{Binding OriginalReceiptId}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </TabItem>
+                    <TabItem Header="Credit Notes">
+                        <StackPanel Spacing="10" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="Formal credit notes issued against customer returns and sales orders." Foreground="Gray" FontSize="12" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Print Selected" Command="{Binding PrintCreditNoteCommand}" CommandParameter="{Binding SelectedCreditNote}" Padding="10,6" Background="#007ACC" Foreground="White"/>
+                            </Grid>
+                            <DataGrid ItemsSource="{Binding CreditNotes}" SelectedItem="{Binding SelectedCreditNote}" AutoGenerateColumns="False" IsReadOnly="True" Height="360">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding IssueDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="100"/>
+                                    <DataGridTextColumn Header="Credit Note #" Binding="{Binding DocumentNumber}" Width="150"/>
+                                    <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*"/>
+                                    <DataGridTextColumn Header="Linked SO / Return" Binding="{Binding LinkedDocument}" Width="140"/>
+                                    <DataGridTextColumn Header="Return #" Binding="{Binding LinkedReturnNumber}" Width="120"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="100"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </TabItem>
+                    <TabItem Header="Debit Notes">
+                        <StackPanel Spacing="10" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="Formal debit notes issued against supplier returns and purchase orders." Foreground="Gray" FontSize="12" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Print Selected" Command="{Binding PrintDebitNoteCommand}" CommandParameter="{Binding SelectedDebitNote}" Padding="10,6" Background="#007ACC" Foreground="White"/>
+                            </Grid>
+                            <DataGrid ItemsSource="{Binding DebitNotes}" SelectedItem="{Binding SelectedDebitNote}" AutoGenerateColumns="False" IsReadOnly="True" Height="360">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding IssueDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="100"/>
+                                    <DataGridTextColumn Header="Debit Note #" Binding="{Binding DocumentNumber}" Width="150"/>
+                                    <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                                    <DataGridTextColumn Header="Linked PO / Return" Binding="{Binding LinkedDocument}" Width="140"/>
+                                    <DataGridTextColumn Header="Return #" Binding="{Binding LinkedReturnNumber}" Width="120"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="100"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,17 +18,20 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly AccountingReportService _accountingReportService;
     private readonly PaymentService _paymentService;
     private readonly CustomFieldService _customFieldService;
+    private readonly CurrencyService _currencyService;
+    private readonly BudgetReportService _budgetReportService;
     private readonly Action? _onRequestShowWizard;
     private readonly Action? _onModulesChanged;
 
     // Tabs
     [ObservableProperty]
-    private string _selectedTab = "General"; // "General", "Taxes", "Accounting", "Payments", "BusinessSetup", "CustomFields", "Terminology", "Modules"
+    private string _selectedTab = "General"; // "General", "Taxes", "Accounting", "Payments", "Financial", "BusinessSetup", "CustomFields", "Terminology", "Modules"
 
     public bool IsGeneralTabActive => SelectedTab == "General";
     public bool IsTaxesTabActive => SelectedTab == "Taxes";
     public bool IsAccountingTabActive => SelectedTab == "Accounting";
     public bool IsPaymentsTabActive => SelectedTab == "Payments";
+    public bool IsFinancialTabActive => SelectedTab == "Financial";
     public bool IsBusinessSetupTabActive => SelectedTab == "BusinessSetup";
     public bool IsCustomFieldsTabActive => SelectedTab == "CustomFields";
     public bool IsTerminologyTabActive => SelectedTab == "Terminology";
@@ -39,6 +43,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsTaxesTabActive));
         OnPropertyChanged(nameof(IsAccountingTabActive));
         OnPropertyChanged(nameof(IsPaymentsTabActive));
+        OnPropertyChanged(nameof(IsFinancialTabActive));
         OnPropertyChanged(nameof(IsBusinessSetupTabActive));
         OnPropertyChanged(nameof(IsCustomFieldsTabActive));
         OnPropertyChanged(nameof(IsTerminologyTabActive));
@@ -55,6 +60,10 @@ public partial class SettingsViewModel : ViewModelBase
         if (value == "Payments")
         {
             _ = LoadPaymentsDataAsync();
+        }
+        if (value == "Financial")
+        {
+            _ = LoadFinancialDataAsync();
         }
         if (value == "BusinessSetup")
         {
@@ -654,6 +663,8 @@ public partial class SettingsViewModel : ViewModelBase
         AccountingReportService accountingReportService,
         PaymentService paymentService,
         CustomFieldService customFieldService,
+        CurrencyService currencyService,
+        BudgetReportService budgetReportService,
         Action? onRequestShowWizard = null,
         Action? onModulesChanged = null)
     {
@@ -665,6 +676,8 @@ public partial class SettingsViewModel : ViewModelBase
         _accountingReportService = accountingReportService;
         _paymentService = paymentService;
         _customFieldService = customFieldService;
+        _currencyService = currencyService;
+        _budgetReportService = budgetReportService;
         _onRequestShowWizard = onRequestShowWizard;
         _onModulesChanged = onModulesChanged;
 
@@ -2036,6 +2049,301 @@ public partial class SettingsViewModel : ViewModelBase
 
     #endregion
 
+    #region Financial (Exchange Rates & Budget Lines)
+
+    [ObservableProperty]
+    private ObservableCollection<ExchangeRate> _exchangeRates = new();
+
+    [ObservableProperty]
+    private int _exchangeRateId;
+
+    [ObservableProperty]
+    private string _exchangeFromCurrency = "USD";
+
+    [ObservableProperty]
+    private string _exchangeToCurrency = "RWF";
+
+    [ObservableProperty]
+    private decimal _exchangeRateValue = 1m;
+
+    [ObservableProperty]
+    private DateTime _exchangeEffectiveDate = DateTime.Today;
+
+    [ObservableProperty]
+    private string _exchangeRateErrorMessage = string.Empty;
+
+    [ObservableProperty]
+    private int _budgetLineFiscalYear = DateTime.Today.Year;
+
+    [ObservableProperty]
+    private ObservableCollection<BudgetLineDisplayRow> _budgetLines = new();
+
+    [ObservableProperty]
+    private int _budgetLineId;
+
+    [ObservableProperty]
+    private Account? _budgetLineSelectedAccount;
+
+    [ObservableProperty]
+    private string _budgetLineAccountSearch = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<Account> _budgetLineAccountResults = new();
+
+    [ObservableProperty]
+    private bool _isBudgetLineAccountResultsVisible;
+
+    [ObservableProperty]
+    private int _budgetLinePeriodMonth;
+
+    [ObservableProperty]
+    private decimal _budgetLineAmount;
+
+    [ObservableProperty]
+    private string _budgetLineNotes = string.Empty;
+
+    [ObservableProperty]
+    private string _budgetLineErrorMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _financialStatusMessage = string.Empty;
+
+    public ObservableCollection<int> BudgetPeriodMonthOptions { get; } = new()
+    {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+    };
+
+    partial void OnBudgetLineAccountSearchChanged(string value)
+    {
+        BudgetLineAccountResults.Clear();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            IsBudgetLineAccountResultsVisible = false;
+            return;
+        }
+
+        var lower = value.ToLower();
+        foreach (var acc in _allAccounts)
+        {
+            if ((acc.Code?.ToLower().Contains(lower) == true) ||
+                (acc.Name?.ToLower().Contains(lower) == true))
+            {
+                BudgetLineAccountResults.Add(acc);
+                if (BudgetLineAccountResults.Count >= 10) break;
+            }
+        }
+        IsBudgetLineAccountResultsVisible = BudgetLineAccountResults.Count > 0;
+    }
+
+    [RelayCommand]
+    private void SelectBudgetLineAccount(Account? account)
+    {
+        BudgetLineSelectedAccount = account;
+        BudgetLineAccountSearch = account != null ? $"{account.Code} {account.Name}" : string.Empty;
+        BudgetLineAccountResults.Clear();
+        IsBudgetLineAccountResultsVisible = false;
+    }
+
+    public async Task LoadFinancialDataAsync()
+    {
+        try
+        {
+            if (_allAccounts.Count == 0)
+            {
+                await LoadAccountsAsync();
+            }
+
+            var rates = await _currencyService.GetAllRatesAsync();
+            ExchangeRates = new ObservableCollection<ExchangeRate>(rates);
+            await LoadBudgetLinesAsync();
+            FinancialStatusMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            FinancialStatusMessage = $"Failed to load financial settings: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadBudgetLinesAsync()
+    {
+        var lines = await _budgetReportService.GetBudgetLinesAsync(BudgetLineFiscalYear);
+        var display = lines.Select(l => new BudgetLineDisplayRow
+        {
+            Line = l,
+            AccountDisplay = _allAccounts.FirstOrDefault(a => a.Id == l.AccountId) is { } acc
+                ? $"{acc.Code} - {acc.Name}"
+                : $"Account #{l.AccountId}"
+        }).ToList();
+        BudgetLines = new ObservableCollection<BudgetLineDisplayRow>(display);
+    }
+
+    partial void OnBudgetLineFiscalYearChanged(int value)
+    {
+        if (SelectedTab == "Financial")
+        {
+            _ = LoadBudgetLinesAsync();
+        }
+    }
+
+    [RelayCommand]
+    private void OpenAddExchangeRateForm()
+    {
+        ExchangeRateId = 0;
+        ExchangeFromCurrency = "USD";
+        ExchangeToCurrency = "RWF";
+        ExchangeRateValue = 1m;
+        ExchangeEffectiveDate = DateTime.Today;
+        ExchangeRateErrorMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private void OpenEditExchangeRateForm(ExchangeRate rate)
+    {
+        if (rate == null) return;
+        ExchangeRateId = rate.Id;
+        ExchangeFromCurrency = rate.FromCurrency;
+        ExchangeToCurrency = rate.ToCurrency;
+        ExchangeRateValue = rate.Rate;
+        ExchangeEffectiveDate = rate.EffectiveDate;
+        ExchangeRateErrorMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task SaveExchangeRateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ExchangeFromCurrency) || string.IsNullOrWhiteSpace(ExchangeToCurrency))
+        {
+            ExchangeRateErrorMessage = "Both currencies are required.";
+            return;
+        }
+
+        if (ExchangeRateValue <= 0)
+        {
+            ExchangeRateErrorMessage = "Rate must be greater than zero.";
+            return;
+        }
+
+        try
+        {
+            var rate = new ExchangeRate
+            {
+                Id = ExchangeRateId,
+                FromCurrency = ExchangeFromCurrency,
+                ToCurrency = ExchangeToCurrency,
+                Rate = ExchangeRateValue,
+                EffectiveDate = ExchangeEffectiveDate
+            };
+            await _currencyService.SaveRateAsync(rate);
+            await LoadFinancialDataAsync();
+            FinancialStatusMessage = "Exchange rate saved.";
+            ExchangeRateErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ExchangeRateErrorMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteExchangeRateAsync(ExchangeRate rate)
+    {
+        if (rate == null) return;
+        try
+        {
+            await _currencyService.DeleteRateAsync(rate.Id);
+            await LoadFinancialDataAsync();
+            FinancialStatusMessage = "Exchange rate deleted.";
+        }
+        catch (Exception ex)
+        {
+            ExchangeRateErrorMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenAddBudgetLineForm()
+    {
+        BudgetLineId = 0;
+        BudgetLineSelectedAccount = null;
+        BudgetLineAccountSearch = string.Empty;
+        BudgetLinePeriodMonth = 0;
+        BudgetLineAmount = 0;
+        BudgetLineNotes = string.Empty;
+        BudgetLineErrorMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private void OpenEditBudgetLineForm(BudgetLineDisplayRow row)
+    {
+        if (row == null) return;
+        var line = row.Line;
+        BudgetLineId = line.Id;
+        BudgetLinePeriodMonth = line.PeriodMonth;
+        BudgetLineAmount = line.BudgetAmount;
+        BudgetLineNotes = line.Notes;
+        BudgetLineSelectedAccount = _allAccounts.FirstOrDefault(a => a.Id == line.AccountId);
+        BudgetLineAccountSearch = BudgetLineSelectedAccount != null
+            ? $"{BudgetLineSelectedAccount.Code} {BudgetLineSelectedAccount.Name}"
+            : string.Empty;
+        BudgetLineErrorMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task SaveBudgetLineAsync()
+    {
+        if (BudgetLineSelectedAccount == null)
+        {
+            BudgetLineErrorMessage = "Select an account.";
+            return;
+        }
+
+        if (BudgetLineAmount < 0)
+        {
+            BudgetLineErrorMessage = "Budget amount cannot be negative.";
+            return;
+        }
+
+        try
+        {
+            var line = new BudgetLine
+            {
+                Id = BudgetLineId,
+                FiscalYear = BudgetLineFiscalYear,
+                AccountId = BudgetLineSelectedAccount.Id,
+                PeriodMonth = BudgetLinePeriodMonth,
+                BudgetAmount = BudgetLineAmount,
+                Notes = BudgetLineNotes?.Trim() ?? string.Empty
+            };
+            await _budgetReportService.SaveBudgetLineAsync(line);
+            await LoadBudgetLinesAsync();
+            FinancialStatusMessage = "Budget line saved.";
+            BudgetLineErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            BudgetLineErrorMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteBudgetLineAsync(BudgetLineDisplayRow row)
+    {
+        if (row == null) return;
+        try
+        {
+            await _budgetReportService.DeleteBudgetLineAsync(row.Line.Id);
+            await LoadBudgetLinesAsync();
+            FinancialStatusMessage = "Budget line deleted.";
+        }
+        catch (Exception ex)
+        {
+            BudgetLineErrorMessage = ex.Message;
+        }
+    }
+
+    #endregion
+
     #region Business Setup
 
     public ObservableCollection<IndustryTemplate> AvailableBusinessTemplates { get; } = new();
@@ -2369,6 +2677,17 @@ public class ModuleToggleItem : ObservableObject
         get => _isEnabled;
         set => SetProperty(ref _isEnabled, value);
     }
+}
+
+public class BudgetLineDisplayRow
+{
+    public BudgetLine Line { get; set; } = new();
+    public string AccountDisplay { get; set; } = string.Empty;
+    public int Id => Line.Id;
+    public int FiscalYear => Line.FiscalYear;
+    public int PeriodMonth => Line.PeriodMonth;
+    public decimal BudgetAmount => Line.BudgetAmount;
+    public string Notes => Line.Notes;
 }
 
 public class BankAccountDisplayRow

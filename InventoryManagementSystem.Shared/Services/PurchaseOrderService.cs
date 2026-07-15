@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using InventoryManagementSystem.Domain;
 using InventoryManagementSystem.Infrastructure;
+using SQLite;
 
 namespace InventoryManagementSystem.Services
 {
@@ -122,180 +123,102 @@ namespace InventoryManagementSystem.Services
 
         public async Task ReceivePurchaseOrderAsync(int poId, List<(int itemId, int quantityReceived)> receivedItems)
         {
+            var lines = receivedItems.Select(r => new PurchaseReceiveLine
+            {
+                ItemId = r.itemId,
+                QuantityReceived = r.quantityReceived
+            }).ToList();
+            await ReceivePurchaseOrderAsync(poId, lines, null);
+        }
+
+        public async Task ReceivePurchaseOrderAsync(
+            int poId,
+            List<PurchaseReceiveLine> receivedItems,
+            List<LandedCostInput>? landedCosts = null)
+        {
             await _databaseService.Connection.RunInTransactionAsync(conn =>
             {
                 var po = conn.Find<PurchaseOrder>(poId);
                 if (po == null || po.Status == "Cancelled" || po.Status == "Received") return;
 
+                decimal totalExtendedCost = 0;
+                var pendingLines = new List<(PurchaseOrderItem item, Product product, int qty, BatchReceiveDetail? detail)>();
+
                 foreach (var line in receivedItems)
                 {
-                    if (line.quantityReceived <= 0) continue;
+                    if (line.QuantityReceived <= 0) continue;
 
-                    var item = conn.Find<PurchaseOrderItem>(line.itemId);
+                    var item = conn.Find<PurchaseOrderItem>(line.ItemId);
                     if (item == null || item.PurchaseOrderId != poId) continue;
 
                     int remainingToReceive = item.QuantityOrdered - item.QuantityReceived;
-                    if (line.quantityReceived > remainingToReceive) continue;
-
-                    item.QuantityReceived += line.quantityReceived;
-                    conn.Update(item);
+                    if (line.QuantityReceived > remainingToReceive) continue;
 
                     var product = conn.Find<Product>(item.ProductId);
-                    if (product != null)
+                    if (product == null) continue;
+
+                    BatchTrackingService.ValidateReceiveDetails(product, line.QuantityReceived, line.BatchDetail);
+                    totalExtendedCost += line.QuantityReceived * item.UnitCost;
+                    pendingLines.Add((item, product, line.QuantityReceived, line.BatchDetail));
+                }
+
+                decimal totalLandedCost = landedCosts?.Sum(c => c.Amount) ?? 0;
+                if (landedCosts != null)
+                {
+                    foreach (var cost in landedCosts.Where(c => c.Amount > 0))
                     {
-                        var previousStock = product.StockQuantity;
-                        product.StockQuantity += line.quantityReceived;
-                        if (item.UnitCost > 0) product.Cost = item.UnitCost;
-                        conn.Update(product);
-                        LocationStockSync.ApplyDelta(conn, product.Id, product.StockQuantity - previousStock);
-
-                        conn.Insert(new PurchaseBatch
+                        conn.Insert(new LandedCostCharge
                         {
-                            ProductId = product.Id,
-                            QuantityPurchased = line.quantityReceived,
-                            QuantityRemaining = line.quantityReceived,
-                            CostPerUnit = item.UnitCost,
-                            PurchaseDate = DateTime.Now,
-                            BatchNumber = $"{po.PONumber}-BATCH-{item.Id}-{DateTime.Now:MMddHHmm}",
-                            QualityStatus = "Good"
+                            PurchaseOrderId = poId,
+                            CostType = cost.CostType,
+                            Amount = cost.Amount,
+                            AppliedDate = DateTime.Now,
+                            Reference = po.PONumber
                         });
-
-                        conn.Insert(new StockMovement
-                        {
-                            ProductId = product.Id,
-                            QuantityChanged = line.quantityReceived,
-                            MovementType = "IN",
-                            Reason = $"PO Receipt: {po.PONumber}",
-                            Date = DateTime.Now,
-                            Username = UserSession.CurrentUser?.Username ?? "System",
-                            UnitPrice = product.Price
-                        });
-
-                        // --- Post Journal Entry for Purchase Receipt ---
-                        var journal = conn.Table<Journal>().Where(j => j.Type == "Purchase").FirstOrDefault();
-                        if (journal != null)
-                        {
-                            var entryCount = conn.Table<JournalEntry>().Where(e => e.JournalId == journal.Id).Count();
-                            var entryNumber = $"{journal.SequencePrefix}/{DateTime.Now.Year}/{(entryCount + 1):D5}";
-
-                            var entry = new JournalEntry
-                            {
-                                EntryNumber = entryNumber,
-                                JournalId = journal.Id,
-                                Date = DateTime.Now,
-                                Reference = $"PO Receipt: {po.PONumber}",
-                                State = "Posted"
-                            };
-                            conn.Insert(entry);
-
-                            decimal purchaseAmount = line.quantityReceived * item.UnitCost;
-                            decimal taxAmount = 0;
-                            decimal inventoryValue = purchaseAmount;
-                            decimal apAmount = purchaseAmount;
-
-                            if (item.TaxId.HasValue)
-                            {
-                                var tax = conn.Find<Tax>(item.TaxId.Value);
-                                if (tax != null)
-                                {
-                                    if (tax.IncludedInPrice == "Include")
-                                    {
-                                        if (tax.Computation == "Percentage")
-                                        {
-                                            inventoryValue = purchaseAmount / (1 + (tax.Amount / 100));
-                                        }
-                                        else
-                                        {
-                                            inventoryValue = Math.Max(0, purchaseAmount - (line.quantityReceived * tax.Amount));
-                                        }
-                                        taxAmount = purchaseAmount - inventoryValue;
-                                    }
-                                    else
-                                    {
-                                        if (tax.Computation == "Percentage")
-                                        {
-                                            taxAmount = purchaseAmount * (tax.Amount / 100);
-                                        }
-                                        else
-                                        {
-                                            taxAmount = line.quantityReceived * tax.Amount;
-                                        }
-                                        apAmount = purchaseAmount + taxAmount;
-                                    }
-                                }
-                            }
-
-                            int debitAccountId;
-                            if (product.ProductType == "Service")
-                            {
-                                debitAccountId = product.ExpenseAccountId ?? 0;
-                                if (debitAccountId == 0)
-                                {
-                                    var expAccount = conn.Table<Account>().Where(a => a.Code == "511000").FirstOrDefault();
-                                    debitAccountId = expAccount?.Id ?? 17; // General Expenses fallback
-                                }
-                            }
-                            else
-                            {
-                                var inventoryAccount = conn.Table<Account>().Where(a => a.Code == "120000").FirstOrDefault();
-                                debitAccountId = inventoryAccount?.Id ?? 4; // Inventory Asset fallback
-                            }
-
-                            var apAccount = conn.Table<Account>().Where(a => a.Code == "201000").FirstOrDefault();
-                            int creditAccountId = apAccount?.Id ?? 7; // Accounts Payable fallback
-
-                            // 1. Debit Inventory Asset (or Expense)
-                            conn.Insert(new JournalLine
-                            {
-                                JournalEntryId = entry.Id,
-                                AccountId = debitAccountId,
-                                ProductId = product.Id,
-                                Label = $"Purchase Receipt - {product.Name} (Qty: {line.quantityReceived})",
-                                Debit = inventoryValue,
-                                Credit = 0
-                            });
-
-                            // 2. Debit VAT Receivable (Input Tax)
-                            if (taxAmount > 0)
-                            {
-                                var taxAccount = conn.Table<Account>()
-                                    .Where(a => a.Code == "125000" || a.Name.Contains("VAT Receivable") || a.Name.Contains("Tax Receivable"))
-                                    .FirstOrDefault();
-                                int taxAccountId = taxAccount?.Id ?? 0;
-                                if (taxAccountId == 0)
-                                {
-                                    var vatPayable = conn.Table<Account>().Where(a => a.Code == "220000").FirstOrDefault();
-                                    taxAccountId = vatPayable?.Id ?? 9; // Fallback to VAT Payable
-                                }
-
-                                conn.Insert(new JournalLine
-                                {
-                                    JournalEntryId = entry.Id,
-                                    AccountId = taxAccountId,
-                                    ProductId = product.Id,
-                                    Label = $"VAT on Purchase - {product.Name}",
-                                    Debit = taxAmount,
-                                    Credit = 0
-                                });
-                            }
-
-                            // 3. Credit Accounts Payable
-                            conn.Insert(new JournalLine
-                            {
-                                JournalEntryId = entry.Id,
-                                AccountId = creditAccountId,
-                                ProductId = product.Id,
-                                Label = $"Purchase Receipt - {product.Name} (Qty: {line.quantityReceived})",
-                                Debit = 0,
-                                Credit = apAmount
-                            });
-                        }
                     }
+                }
+
+                foreach (var (item, product, qty, detail) in pendingLines)
+                {
+                    item.QuantityReceived += qty;
+                    conn.Update(item);
+
+                    var landedPerUnit = BatchTrackingService.AllocateLandedCostPerUnit(
+                        qty * item.UnitCost, totalExtendedCost, totalLandedCost, qty);
+                    var unitCostWithLanded = item.UnitCost + landedPerUnit;
+
+                    var previousStock = product.StockQuantity;
+                    product.StockQuantity += qty;
+                    if (unitCostWithLanded > 0) product.Cost = unitCostWithLanded;
+                    conn.Update(product);
+                    LocationStockSync.ApplyDelta(conn, product.Id, product.StockQuantity - previousStock);
+
+                    BatchTrackingService.CreateBatchesOnReceive(
+                        conn,
+                        product,
+                        qty,
+                        unitCostWithLanded,
+                        DateTime.Now,
+                        detail,
+                        $"{po.PONumber}-BATCH-{item.Id}");
+
+                    conn.Insert(new StockMovement
+                    {
+                        ProductId = product.Id,
+                        QuantityChanged = qty,
+                        MovementType = "IN",
+                        Reason = $"PO Receipt: {po.PONumber}",
+                        Date = DateTime.Now,
+                        Username = UserSession.CurrentUser?.Username ?? "System",
+                        UnitPrice = product.Price
+                    });
+
+                    PostPurchaseReceiptJournal(conn, po, item, product, qty, unitCostWithLanded, landedPerUnit * qty);
                 }
 
                 var allItems = conn.Table<PurchaseOrderItem>().Where(i => i.PurchaseOrderId == poId).ToList();
                 bool allReceived = allItems.All(i => i.QuantityReceived >= i.QuantityOrdered);
-                
+
                 po.Status = allReceived ? "Received" : "Shipped";
                 po.ReceiptStatus = allItems.Any(i => i.QuantityReceived > 0)
                     ? (allReceived ? "Received" : "Partially Received")
@@ -305,6 +228,131 @@ namespace InventoryManagementSystem.Services
                     po.ActualDeliveryDate = DateTime.Now;
                 }
                 conn.Update(po);
+            });
+        }
+
+        private static void PostPurchaseReceiptJournal(
+            SQLiteConnection conn,
+            PurchaseOrder po,
+            PurchaseOrderItem item,
+            Product product,
+            int quantityReceived,
+            decimal unitCost,
+            decimal landedAmount)
+        {
+            var journal = conn.Table<Journal>().Where(j => j.Type == "Purchase").FirstOrDefault();
+            if (journal == null) return;
+
+            var entryCount = conn.Table<JournalEntry>().Where(e => e.JournalId == journal.Id).Count();
+            var entryNumber = $"{journal.SequencePrefix}/{DateTime.Now.Year}/{(entryCount + 1):D5}";
+
+            var entry = new JournalEntry
+            {
+                EntryNumber = entryNumber,
+                JournalId = journal.Id,
+                Date = DateTime.Now,
+                Reference = $"PO Receipt: {po.PONumber}",
+                State = "Posted"
+            };
+            conn.Insert(entry);
+
+            decimal purchaseAmount = quantityReceived * item.UnitCost;
+            decimal taxAmount = 0;
+            decimal inventoryValue = purchaseAmount + landedAmount;
+            decimal apAmount = purchaseAmount;
+
+            if (item.TaxId.HasValue)
+            {
+                var tax = conn.Find<Tax>(item.TaxId.Value);
+                if (tax != null)
+                {
+                    if (tax.IncludedInPrice == "Include")
+                    {
+                        if (tax.Computation == "Percentage")
+                        {
+                            inventoryValue = purchaseAmount / (1 + (tax.Amount / 100)) + landedAmount;
+                        }
+                        else
+                        {
+                            inventoryValue = Math.Max(0, purchaseAmount - (quantityReceived * tax.Amount)) + landedAmount;
+                        }
+                        taxAmount = purchaseAmount + landedAmount - inventoryValue;
+                    }
+                    else
+                    {
+                        if (tax.Computation == "Percentage")
+                        {
+                            taxAmount = purchaseAmount * (tax.Amount / 100);
+                        }
+                        else
+                        {
+                            taxAmount = quantityReceived * tax.Amount;
+                        }
+                        apAmount = purchaseAmount + taxAmount;
+                    }
+                }
+            }
+
+            int debitAccountId;
+            if (product.ProductType == "Service")
+            {
+                debitAccountId = product.ExpenseAccountId ?? 0;
+                if (debitAccountId == 0)
+                {
+                    var expAccount = conn.Table<Account>().Where(a => a.Code == "511000").FirstOrDefault();
+                    debitAccountId = expAccount?.Id ?? 17;
+                }
+            }
+            else
+            {
+                var inventoryAccount = conn.Table<Account>().Where(a => a.Code == "120000").FirstOrDefault();
+                debitAccountId = inventoryAccount?.Id ?? 4;
+            }
+
+            var apAccount = conn.Table<Account>().Where(a => a.Code == "201000").FirstOrDefault();
+            int creditAccountId = apAccount?.Id ?? 7;
+
+            conn.Insert(new JournalLine
+            {
+                JournalEntryId = entry.Id,
+                AccountId = debitAccountId,
+                ProductId = product.Id,
+                Label = $"Purchase Receipt - {product.Name} (Qty: {quantityReceived})",
+                Debit = inventoryValue,
+                Credit = 0
+            });
+
+            if (taxAmount > 0)
+            {
+                var taxAccount = conn.Table<Account>()
+                    .Where(a => a.Code == "125000" || a.Name.Contains("VAT Receivable") || a.Name.Contains("Tax Receivable"))
+                    .FirstOrDefault();
+                int taxAccountId = taxAccount?.Id ?? 0;
+                if (taxAccountId == 0)
+                {
+                    var vatPayable = conn.Table<Account>().Where(a => a.Code == "220000").FirstOrDefault();
+                    taxAccountId = vatPayable?.Id ?? 9;
+                }
+
+                conn.Insert(new JournalLine
+                {
+                    JournalEntryId = entry.Id,
+                    AccountId = taxAccountId,
+                    ProductId = product.Id,
+                    Label = $"VAT on Purchase - {product.Name}",
+                    Debit = taxAmount,
+                    Credit = 0
+                });
+            }
+
+            conn.Insert(new JournalLine
+            {
+                JournalEntryId = entry.Id,
+                AccountId = creditAccountId,
+                ProductId = product.Id,
+                Label = $"Purchase Receipt - {product.Name} (Qty: {quantityReceived})",
+                Debit = 0,
+                Credit = apAmount
             });
         }
 
