@@ -199,10 +199,11 @@
                                 <Grid ColumnDefinitions="*, Auto">
                                     <TextBlock Text="{Binding Language.Resources[POS_TotalAmount]}" FontSize="16"/>
                                     <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextColor}">
-                                        <Run Text="{Binding TotalAmount, StringFormat='{}{0:N0}'}"/>
-                                        <Run Text="{Binding CurrencySymbol}"/>
+                                        <Run Text="{Binding CheckoutTotalAmount, StringFormat='{}{0:N0}'}"/>
+                                        <Run Text="{Binding ActiveCheckoutCurrency}"/>
                                     </TextBlock>
                                 </Grid>
+                                <TextBlock Text="{Binding CheckoutBaseEquivalent}" FontSize="12" Foreground="Gray" IsVisible="{Binding CheckoutBaseEquivalent, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             </StackPanel>
                             
                             <!-- Checkout / Make Payment Button -->
@@ -286,6 +287,12 @@
                                         <CheckBox Content="Auto Create Invoice" IsChecked="{Binding AutoCreateInvoice}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}"/>
                                     </Border>
 
+                                    <!-- Checkout currency -->
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Checkout Currency" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextSecondaryColor}"/>
+                                        <ComboBox ItemsSource="{Binding PosCurrencies}" SelectedItem="{Binding PosCheckoutCurrency}" HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
                                     <!-- Amount Paid Field -->
                                     <StackPanel Spacing="5">
                                         <TextBlock Text="Amount Paid" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextSecondaryColor}"/>
@@ -300,15 +307,16 @@
                                 <Grid ColumnDefinitions="*, Auto">
                                     <TextBlock Text="Total Amount" FontSize="14" Foreground="Gray"/>
                                     <TextBlock Grid.Column="1" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextColor}">
-                                        <Run Text="{Binding TotalAmount, StringFormat='{}{0:N0}'}"/>
-                                        <Run Text="{Binding CurrencySymbol}"/>
+                                        <Run Text="{Binding CheckoutTotalAmount, StringFormat='{}{0:N0}'}"/>
+                                        <Run Text="{Binding ActiveCheckoutCurrency}"/>
                                     </TextBlock>
                                 </Grid>
+                                <TextBlock Text="{Binding CheckoutBaseEquivalent}" FontSize="11" Foreground="Gray" IsVisible="{Binding CheckoutBaseEquivalent, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 <Grid ColumnDefinitions="*, Auto">
                                     <TextBlock Text="Change Due" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentColor}">
                                         <Run Text="{Binding ChangeDue, StringFormat='{}{0:N0}'}"/>
-                                        <Run Text="{Binding CurrencySymbol}"/>
+                                        <Run Text="{Binding ActiveCheckoutCurrency}"/>
                                     </TextBlock>
                                 </Grid>
                             </StackPanel>

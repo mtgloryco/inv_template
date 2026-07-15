@@ -34,6 +34,9 @@ namespace InventoryManagementSystem.Services
         {
             public Product Product { get; set; } = new();
             public ReorderRule Rule { get; set; } = new();
+            public int LocationId { get; set; }
+            public string LocationName { get; set; } = string.Empty;
+            public int LocationStockQuantity { get; set; }
             public decimal DailyVelocity { get; set; }
             public int DaysUntilStockout { get; set; }
             public int ThresholdDays { get; set; }
@@ -61,22 +64,32 @@ namespace InventoryManagementSystem.Services
             return soldUnits <= 0 ? 0 : (decimal)soldUnits / days;
         }
 
-        public async Task<int> GetDaysUntilStockoutAsync(int productId)
+        public async Task<int> GetDaysUntilStockoutAsync(int productId, int? locationId = null)
         {
-            var product = await _databaseService.Connection.Table<Product>()
-                .Where(p => p.Id == productId)
-                .FirstOrDefaultAsync();
-
-            if (product == null) return int.MaxValue;
-            if (product.StockQuantity <= 0) return 0;
+            var stockQty = await GetLocationStockQuantityAsync(productId, locationId);
+            if (stockQty <= 0) return 0;
 
             var dailyVelocity = await GetSalesVelocityAsync(productId, 30);
             if (dailyVelocity <= 0) return int.MaxValue;
 
-            // days = current stock / units per day
-            var daysDecimal = product.StockQuantity / dailyVelocity;
+            var daysDecimal = stockQty / dailyVelocity;
             if (daysDecimal < 0) return 0;
             return (int)Math.Floor(daysDecimal);
+        }
+
+        public async Task<int> GetLocationStockQuantityAsync(int productId, int? locationId = null)
+        {
+            if (locationId.HasValue && locationId.Value > 0)
+            {
+                var locStock = await _databaseService.Connection.Table<LocationStock>()
+                    .FirstOrDefaultAsync(ls => ls.LocationId == locationId.Value && ls.ProductId == productId && !ls.IsDeleted);
+                return locStock?.Quantity ?? 0;
+            }
+
+            var product = await _databaseService.Connection.Table<Product>()
+                .Where(p => p.Id == productId)
+                .FirstOrDefaultAsync();
+            return product?.StockQuantity ?? 0;
         }
 
         public async Task<List<ReorderRecommendation>> GetReorderRecommendationsAsync()
@@ -84,6 +97,9 @@ namespace InventoryManagementSystem.Services
             var rules = await _databaseService.Connection.Table<ReorderRule>().ToListAsync();
             var products = await _databaseService.Connection.Table<Product>().ToListAsync();
             var suppliers = await _databaseService.Connection.Table<Supplier>().ToListAsync();
+            var locations = await _databaseService.Connection.Table<Location>().Where(l => l.IsActive).ToListAsync();
+            var locationStocks = await _databaseService.Connection.Table<LocationStock>().Where(ls => !ls.IsDeleted).ToListAsync();
+            var defaultLocation = locations.OrderBy(l => l.Id).FirstOrDefault();
 
             var recs = new List<ReorderRecommendation>();
 
@@ -92,16 +108,27 @@ namespace InventoryManagementSystem.Services
                 var product = products.FirstOrDefault(p => p.Id == rule.ProductId);
                 if (product == null) continue;
 
-                var daysUntilStockout = await GetDaysUntilStockoutAsync(product.Id);
+                var locationId = rule.LocationId > 0 ? rule.LocationId : defaultLocation?.Id ?? 0;
+                var location = locations.FirstOrDefault(l => l.Id == locationId);
+                var locStock = locationStocks.FirstOrDefault(ls => ls.LocationId == locationId && ls.ProductId == product.Id);
+                var stockQty = locStock?.Quantity ?? (locationId == 0 ? product.StockQuantity : 0);
+                var reorderPoint = rule.ReorderPoint > 0 ? rule.ReorderPoint : locStock?.ReorderPoint ?? 0;
+
+                if (stockQty > reorderPoint && reorderPoint > 0) continue;
+
+                var daysUntilStockout = await GetDaysUntilStockoutAsync(product.Id, locationId > 0 ? locationId : null);
                 var thresholdDays = rule.LeadTimeDays + rule.SafetyStockDays;
 
-                if (daysUntilStockout <= thresholdDays)
+                if (stockQty <= reorderPoint || daysUntilStockout <= thresholdDays)
                 {
                     var supplierName = suppliers.FirstOrDefault(s => s.Id == rule.PreferredSupplierId)?.Name ?? "Unknown";
                     recs.Add(new ReorderRecommendation
                     {
                         Product = product,
                         Rule = rule,
+                        LocationId = locationId,
+                        LocationName = location?.Name ?? "All Locations",
+                        LocationStockQuantity = stockQty,
                         DailyVelocity = await GetSalesVelocityAsync(product.Id, 30),
                         DaysUntilStockout = daysUntilStockout,
                         ThresholdDays = thresholdDays,
@@ -111,7 +138,6 @@ namespace InventoryManagementSystem.Services
                 }
             }
 
-            // Highest urgency first
             recs.Sort((a, b) => a.DaysUntilStockout.CompareTo(b.DaysUntilStockout));
             return recs;
         }

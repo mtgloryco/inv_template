@@ -234,9 +234,32 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly Action? _goToSalesQuotations;
         private readonly Action? _goToSalesOrders;
         private readonly Action? _goToCustomers;
+        private readonly Action? _goToCycleCount;
+        private readonly Action? _goToReorderDashboard;
+        private readonly Action? _goToForecasting;
+        private readonly Action? _goToLocations;
         private readonly BarcodeService? _barcodeService;
 
         [ObservableProperty] private string _barcodeStatusMessage = string.Empty;
+
+        // Product history modal
+        [ObservableProperty] private bool _isHistoryModalOpen;
+        [ObservableProperty] private string _historyProductTitle = string.Empty;
+        [ObservableProperty] private ObservableCollection<ProductHistoryEvent> _productHistoryEvents = new();
+        [ObservableProperty] private ProductHistoryEvent? _selectedHistoryEvent;
+        [ObservableProperty] private ObservableCollection<JournalEntryDetailRow> _historyJournalLines = new();
+        [ObservableProperty] private decimal _historyJournalTotalDebit;
+        [ObservableProperty] private decimal _historyJournalTotalCredit;
+        [ObservableProperty] private string _historyStatusMessage = string.Empty;
+
+        [ObservableProperty] private string _adjustmentBatchNumber = string.Empty;
+        [ObservableProperty] private string _adjustmentSerialNumbers = string.Empty;
+        [ObservableProperty] private DateTimeOffset? _adjustmentExpiryDate;
+
+        public bool RequiresLotTracking => BatchTrackingService.RequiresLotTracking(CurrentProduct);
+        public bool RequiresSerialTracking => BatchTrackingService.RequiresSerialTracking(CurrentProduct);
+        public bool ShowBatchFields => IsStockMode && IsMovementIn && RequiresLotTracking;
+        public bool ShowSerialFields => IsStockMode && IsMovementIn && RequiresSerialTracking;
 
         public InventoryViewModel(
             InventoryService inventoryService, 
@@ -251,6 +274,10 @@ namespace InventoryManagementSystem.UI.ViewModels
             Action? goToSalesQuotations = null,
             Action? goToSalesOrders = null,
             Action? goToCustomers = null,
+            Action? goToCycleCount = null,
+            Action? goToReorderDashboard = null,
+            Action? goToForecasting = null,
+            Action? goToLocations = null,
             CustomFieldService? customFieldService = null,
             BarcodeService? barcodeService = null)
         {
@@ -266,6 +293,10 @@ namespace InventoryManagementSystem.UI.ViewModels
             _goToSalesQuotations = goToSalesQuotations;
             _goToSalesOrders = goToSalesOrders;
             _goToCustomers = goToCustomers;
+            _goToCycleCount = goToCycleCount;
+            _goToReorderDashboard = goToReorderDashboard;
+            _goToForecasting = goToForecasting;
+            _goToLocations = goToLocations;
             _customFieldService = customFieldService;
             _barcodeService = barcodeService;
             _customFieldsPanel.Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasCustomFields));
@@ -358,8 +389,33 @@ namespace InventoryManagementSystem.UI.ViewModels
             OnPropertyChanged(nameof(IsExpenseAccountListVisible));
         }
 
-        [RelayCommand]
-        private void GoToRfqScreen() => _goToRfq?.Invoke();
+        [RelayCommand] private void GoToRfqScreen() => _goToRfq?.Invoke();
+        [RelayCommand] private void GoToCycleCountScreen() => _goToCycleCount?.Invoke();
+        [RelayCommand] private void GoToReorderDashboardScreen() => _goToReorderDashboard?.Invoke();
+        [RelayCommand] private void GoToForecastingScreen() => _goToForecasting?.Invoke();
+        [RelayCommand] private void GoToLocationsScreen() => _goToLocations?.Invoke();
+
+        partial void OnCurrentProductChanged(Product value)
+        {
+            OnPropertyChanged(nameof(RequiresLotTracking));
+            OnPropertyChanged(nameof(RequiresSerialTracking));
+            OnPropertyChanged(nameof(ShowBatchFields));
+            OnPropertyChanged(nameof(ShowSerialFields));
+        }
+
+        partial void OnIsStockModeChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowBatchFields));
+            OnPropertyChanged(nameof(ShowSerialFields));
+        }
+
+        partial void OnSelectedMovementTypeChanged(string value)
+        {
+            OnPropertyChanged(nameof(IsMovementIn));
+            OnPropertyChanged(nameof(IsMovementOut));
+            OnPropertyChanged(nameof(ShowBatchFields));
+            OnPropertyChanged(nameof(ShowSerialFields));
+        }
 
         [RelayCommand]
         private void GoToPurchaseOrdersScreen() => _goToPurchaseOrders?.Invoke();
@@ -798,6 +854,24 @@ namespace InventoryManagementSystem.UI.ViewModels
             try
             {
                 var username = UserSession.CurrentUser?.Username ?? "Unknown";
+                BatchReceiveDetail? batchDetail = null;
+                if (SelectedMovementType == "IN" && BatchTrackingService.RequiresTrackedBatches(CurrentProduct))
+                {
+                    batchDetail = new BatchReceiveDetail
+                    {
+                        BatchNumber = AdjustmentBatchNumber,
+                        ExpiryDate = AdjustmentExpiryDate?.DateTime
+                    };
+                    if (BatchTrackingService.RequiresSerialTracking(CurrentProduct))
+                    {
+                        batchDetail.SerialNumbers = AdjustmentSerialNumbers
+                            .Split(new[] { ',', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .ToList();
+                    }
+                    BatchTrackingService.ValidateReceiveDetails(CurrentProduct, AdjustmentQuantity, batchDetail);
+                }
+
                 await _inventoryService.AddStockMovementAsync(
                     CurrentProduct.Id,
                     AdjustmentQuantity,
@@ -805,7 +879,11 @@ namespace InventoryManagementSystem.UI.ViewModels
                     AdjustmentReason,
                     username,
                     AdjustmentCostPerUnit,
-                    AdjustmentUnitPrice);
+                    AdjustmentUnitPrice,
+                    batchDetail?.BatchNumber,
+                    batchDetail?.ExpiryDate,
+                    qualityStatus: null,
+                    serialNumbers: batchDetail?.SerialNumbers);
                 IsPaneOpen = false;
                 await LoadProducts();
             }
@@ -877,10 +955,55 @@ namespace InventoryManagementSystem.UI.ViewModels
             LoadProductsCommand.Execute(null);
         }
 
-        partial void OnSelectedMovementTypeChanged(string value)
+        [RelayCommand]
+        private async Task OpenProductHistory(Product? product)
         {
-            OnPropertyChanged(nameof(IsMovementIn));
-            OnPropertyChanged(nameof(IsMovementOut));
+            if (product == null) return;
+
+            HistoryProductTitle = $"{product.Name} ({product.SKU})";
+            HistoryStatusMessage = string.Empty;
+            SelectedHistoryEvent = null;
+            HistoryJournalLines.Clear();
+            HistoryJournalTotalDebit = 0;
+            HistoryJournalTotalCredit = 0;
+
+            var events = await _inventoryService.ProductHistory.GetProductHistoryAsync(product.Id);
+            ProductHistoryEvents = new ObservableCollection<ProductHistoryEvent>(events);
+            HistoryStatusMessage = events.Count == 0
+                ? "No stock movements recorded for this product yet."
+                : $"{events.Count} transaction(s). Select a row to view linked journal entries.";
+
+            IsHistoryModalOpen = true;
+        }
+
+        partial void OnSelectedHistoryEventChanged(ProductHistoryEvent? value)
+        {
+            _ = LoadHistoryJournalsAsync(value);
+        }
+
+        private async Task LoadHistoryJournalsAsync(ProductHistoryEvent? historyEvent)
+        {
+            HistoryJournalLines.Clear();
+            HistoryJournalTotalDebit = 0;
+            HistoryJournalTotalCredit = 0;
+
+            if (historyEvent == null) return;
+
+            var lines = await _inventoryService.ProductHistory.GetJournalLinesForMovementAsync(historyEvent.Movement);
+            HistoryJournalLines = new ObservableCollection<JournalEntryDetailRow>(lines);
+            HistoryJournalTotalDebit = lines.Sum(l => l.Debit);
+            HistoryJournalTotalCredit = lines.Sum(l => l.Credit);
+
+            if (lines.Count == 0)
+            {
+                HistoryStatusMessage = "No journal entries linked to this movement (may be a stock-only change).";
+            }
+        }
+
+        [RelayCommand]
+        private void CloseHistoryModal()
+        {
+            IsHistoryModalOpen = false;
         }
     }
 }

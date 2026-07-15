@@ -49,6 +49,8 @@
                     Classes="tab-btn" Classes.active-tab="{Binding IsAccountingTabActive}" />
             <Button Content="Payments Setup" Command="{Binding SelectTabCommand}" CommandParameter="Payments"
                     Classes="tab-btn" Classes.active-tab="{Binding IsPaymentsTabActive}" />
+            <Button Content="Financial" Command="{Binding SelectTabCommand}" CommandParameter="Financial"
+                    Classes="tab-btn" Classes.active-tab="{Binding IsFinancialTabActive}" />
             <Button Content="Business Setup" Command="{Binding SelectTabCommand}" CommandParameter="BusinessSetup"
                     Classes="tab-btn" Classes.active-tab="{Binding IsBusinessSetupTabActive}" />
             <Button Content="Custom Fields" Command="{Binding SelectTabCommand}" CommandParameter="CustomFields"
@@ -1079,6 +1081,119 @@
                              </Grid>
                          </Panel>
                      </Grid>
+
+                    <!-- TAB: FINANCIAL (Exchange Rates & Budget Lines) -->
+                    <StackPanel Spacing="30" IsVisible="{Binding IsFinancialTabActive}">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Financial Settings" FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="Manage exchange rates and annual budget lines for budget vs actual reporting." Foreground="Gray" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- Exchange Rates -->
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="Exchange Rates" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="+ Add Rate" Command="{Binding OpenAddExchangeRateFormCommand}" Background="#007ACC" Foreground="White" Padding="12,6"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*, *, *, Auto, Auto" RowDefinitions="Auto, Auto" Margin="0,0,0,8">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="From" FontSize="11" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding CurrencyOptions}" SelectedItem="{Binding ExchangeFromCurrency}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="To" FontSize="11" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding CurrencyOptions}" SelectedItem="{Binding ExchangeToCurrency}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="Rate" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding ExchangeRateValue}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="Effective Date" FontSize="11" FontWeight="SemiBold"/>
+                                    <DatePicker SelectedDate="{Binding ExchangeEffectiveDate}"/>
+                                </StackPanel>
+                                <Button Grid.Column="4" Content="Save Rate" Command="{Binding SaveExchangeRateCommand}" Background="#2E7D32" Foreground="White" Padding="12,6" VerticalAlignment="Bottom"/>
+                            </Grid>
+                            <TextBlock Text="{Binding ExchangeRateErrorMessage}" Foreground="#D32F2F" IsVisible="{Binding ExchangeRateErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <DataGrid ItemsSource="{Binding ExchangeRates}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" Height="180">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="From" Binding="{Binding FromCurrency}" Width="80"/>
+                                    <DataGridTextColumn Header="To" Binding="{Binding ToCurrency}" Width="80"/>
+                                    <DataGridTextColumn Header="Rate" Binding="{Binding Rate, StringFormat='{}{0:N4}'}" Width="120"/>
+                                    <DataGridTextColumn Header="Effective" Binding="{Binding EffectiveDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                                    <DataGridTemplateColumn Header="Actions" Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate x:DataType="domain:ExchangeRate">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditExchangeRateFormCommand}" CommandParameter="{Binding .}" Padding="6,2" FontSize="11"/>
+                                                    <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteExchangeRateCommand}" CommandParameter="{Binding .}" Padding="6,2" FontSize="11" Background="#D32F2F" Foreground="White"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+
+                        <Separator Height="1" Background="{DynamicResource BorderColor}"/>
+
+                        <!-- Budget Lines -->
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*, Auto, Auto">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <TextBlock Text="Budget Lines" FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Fiscal Year:" VerticalAlignment="Center"/>
+                                    <NumericUpDown Value="{Binding BudgetLineFiscalYear}" Minimum="2000" Maximum="2100" Width="100"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="+ Add Budget Line" Command="{Binding OpenAddBudgetLineFormCommand}" Background="#007ACC" Foreground="White" Padding="12,6" Margin="0,0,8,0"/>
+                                <Button Grid.Column="2" Content="Refresh" Command="{Binding LoadBudgetLinesCommand}" Background="#78909C" Foreground="White" Padding="12,6"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*, *, Auto, Auto" RowDefinitions="Auto, Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="Account" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding BudgetLineAccountSearch, Mode=TwoWay}" Watermark="Search account..."/>
+                                    <ListBox ItemsSource="{Binding BudgetLineAccountResults}" IsVisible="{Binding IsBudgetLineAccountResultsVisible}" MaxHeight="120">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="domain:Account">
+                                                <Button Content="{Binding Name}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectBudgetLineAccountCommand}" CommandParameter="{Binding .}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="Month (0=annual)" FontSize="11" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding BudgetPeriodMonthOptions}" SelectedItem="{Binding BudgetLinePeriodMonth}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="Amount" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding BudgetLineAmount}"/>
+                                </StackPanel>
+                                <Button Grid.Column="3" Content="Save Line" Command="{Binding SaveBudgetLineCommand}" Background="#2E7D32" Foreground="White" Padding="12,6" VerticalAlignment="Bottom"/>
+                            </Grid>
+                            <TextBox Text="{Binding BudgetLineNotes}" Watermark="Notes (optional)"/>
+                            <TextBlock Text="{Binding BudgetLineErrorMessage}" Foreground="#D32F2F" IsVisible="{Binding BudgetLineErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <DataGrid ItemsSource="{Binding BudgetLines}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal" Height="200">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Account" Binding="{Binding AccountDisplay}" Width="*"/>
+                                    <DataGridTextColumn Header="Month" Binding="{Binding PeriodMonth}" Width="70"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding BudgetAmount, StringFormat='{}{0:N2}'}" Width="120"/>
+                                    <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+                                    <DataGridTemplateColumn Header="Actions" Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate x:DataType="vm:BudgetLineDisplayRow">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenEditBudgetLineFormCommand}" CommandParameter="{Binding .}" Padding="6,2" FontSize="11"/>
+                                                    <Button Content="Delete" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteBudgetLineCommand}" CommandParameter="{Binding .}" Padding="6,2" FontSize="11" Background="#D32F2F" Foreground="White"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding FinancialStatusMessage}" Foreground="#4CAF50" FontWeight="Medium"/>
+                    </StackPanel>
 
                     <!-- TAB 5: BUSINESS SETUP -->
                     <StackPanel Spacing="20" MaxWidth="700" HorizontalAlignment="Left" IsVisible="{Binding IsBusinessSetupTabActive}">

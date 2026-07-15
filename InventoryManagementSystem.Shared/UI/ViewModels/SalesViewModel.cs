@@ -20,8 +20,11 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly SettingsService _settingsService;
         private readonly SalesOrderPdfService _pdfService;
         private readonly ReturnsService _returnsService;
+        private readonly PaymentService _paymentService;
+        private readonly CurrencyService _currencyService;
 
         public LanguageService Language { get; }
+        public string BaseCurrency => _settingsService.CurrentSettings.CurrencySymbol ?? "RWF";
 
         [ObservableProperty] private int _selectedTabIndex; // 0 = Quotations, 1 = Sales Orders
 
@@ -108,6 +111,19 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private decimal _detailedSubtotal;
         [ObservableProperty] private decimal _detailedTotal;
         [ObservableProperty] private string _detailedTaxBreakdownText = string.Empty;
+        [ObservableProperty] private string _detailedBaseCurrencyEquivalent = string.Empty;
+
+        [ObservableProperty] private decimal _detailedOpenBalance;
+        [ObservableProperty] private decimal _detailedAmountPaid;
+        [ObservableProperty] private ObservableCollection<InvoicePayment> _detailedPayments = new();
+        [ObservableProperty] private bool _isPaymentModalOpen;
+        [ObservableProperty] private decimal _paymentAmount;
+        [ObservableProperty] private string _paymentMethod = "Bank";
+        [ObservableProperty] private string _paymentReference = string.Empty;
+        [ObservableProperty] private string _paymentErrorMessage = string.Empty;
+
+        public List<string> PaymentMethods { get; } = new() { "Bank", "Cash", "Mobile Money" };
+        public bool CanRecordPayment => IsDetailedSoInvoiced && DetailedOpenBalance > 0.01m;
 
         public bool DetailedSoIsArchived => DetailedSo?.IsArchived ?? false;
         public bool CanCancelDetailedSo => DetailedSo != null && DetailedSo.Status != "Cancelled" && DetailedSo.Status != "Delivered";
@@ -130,6 +146,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             TaxService taxService,
             SettingsService settingsService,
             ReturnsService returnsService,
+            PaymentService paymentService,
+            CurrencyService currencyService,
             LanguageService languageService,
             int initialTab = 0)
         {
@@ -139,6 +157,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             _taxService = taxService;
             _settingsService = settingsService;
             _returnsService = returnsService;
+            _paymentService = paymentService;
+            _currencyService = currencyService;
             Language = languageService;
             _pdfService = new SalesOrderPdfService(_settingsService);
             SelectedTabIndex = initialTab;
@@ -491,13 +511,99 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(CanReturnDetailedSo));
                 OnPropertyChanged(nameof(CanInvoiceDetailedSo));
                 OnPropertyChanged(nameof(IsDetailedSoInvoiced));
+                OnPropertyChanged(nameof(CanRecordPayment));
 
+                await LoadPaymentDetailsAsync();
+                await UpdateDetailedBaseCurrencyEquivalentAsync();
                 IsDetailsOpen = true;
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error opening details: {ex.Message}";
             }
+        }
+
+        private async Task LoadPaymentDetailsAsync()
+        {
+            if (DetailedSo == null || DetailedSo.BillingStatus != "Invoiced")
+            {
+                DetailedOpenBalance = 0;
+                DetailedAmountPaid = 0;
+                DetailedPayments = new ObservableCollection<InvoicePayment>();
+                OnPropertyChanged(nameof(CanRecordPayment));
+                return;
+            }
+
+            DetailedAmountPaid = await _paymentService.GetAmountPaidAsync("SalesOrder", DetailedSo.Id);
+            DetailedOpenBalance = await _paymentService.GetOpenBalanceAsync("SalesOrder", DetailedSo.Id);
+            var payments = await _paymentService.GetPaymentsForDocumentAsync("SalesOrder", DetailedSo.Id);
+            DetailedPayments = new ObservableCollection<InvoicePayment>(payments);
+            OnPropertyChanged(nameof(CanRecordPayment));
+        }
+
+        [RelayCommand]
+        private void OpenRecordPayment()
+        {
+            if (!CanRecordPayment) return;
+            PaymentAmount = DetailedOpenBalance;
+            PaymentMethod = "Bank";
+            PaymentReference = string.Empty;
+            PaymentErrorMessage = string.Empty;
+            IsPaymentModalOpen = true;
+        }
+
+        [RelayCommand]
+        private async Task SubmitPayment()
+        {
+            PaymentErrorMessage = string.Empty;
+            if (DetailedSo == null) return;
+            if (PaymentAmount <= 0)
+            {
+                PaymentErrorMessage = "Payment amount must be greater than zero.";
+                return;
+            }
+
+            try
+            {
+                await _paymentService.RecordInvoicePaymentAsync(
+                    "SalesOrder",
+                    DetailedSo.Id,
+                    PaymentAmount,
+                    PaymentMethod,
+                    UserSession.CurrentUser?.Username ?? "System",
+                    reference: PaymentReference);
+
+                IsPaymentModalOpen = false;
+                await LoadPaymentDetailsAsync();
+                ErrorMessage = $"Recorded payment of {PaymentAmount:N2} {DetailedSo.Currency} for {DetailedSo.SONumber}";
+            }
+            catch (Exception ex)
+            {
+                PaymentErrorMessage = ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        private void ClosePaymentModal()
+        {
+            IsPaymentModalOpen = false;
+        }
+
+        private async Task UpdateDetailedBaseCurrencyEquivalentAsync()
+        {
+            if (DetailedSo == null)
+            {
+                DetailedBaseCurrencyEquivalent = string.Empty;
+                return;
+            }
+
+            var (_, label) = await _currencyService.TryFormatBaseEquivalentAsync(
+                DetailedTotal,
+                DetailedSo.Currency,
+                BaseCurrency,
+                DetailedSo.OrderDate);
+
+            DetailedBaseCurrencyEquivalent = label;
         }
 
         private void UpdateDetailedTotals(List<SalesOrderItemDisplayRow> rows)
@@ -564,6 +670,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             DetailedSubtotal = subtotal;
             DetailedTotal = total;
 
+            _ = UpdateDetailedBaseCurrencyEquivalentAsync();
+
             if (taxBreakdown.Count == 0)
             {
                 DetailedTaxBreakdownText = "Taxes: None";
@@ -623,7 +731,9 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(CanDeliverDetailedSo));
                 OnPropertyChanged(nameof(CanInvoiceDetailedSo));
                 OnPropertyChanged(nameof(IsDetailedSoInvoiced));
+                OnPropertyChanged(nameof(CanRecordPayment));
 
+                await LoadPaymentDetailsAsync();
                 await LoadSalesData();
             }
             catch (Exception ex)
@@ -653,7 +763,9 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(CanDeliverDetailedSo));
                 OnPropertyChanged(nameof(CanInvoiceDetailedSo));
                 OnPropertyChanged(nameof(IsDetailedSoInvoiced));
+                OnPropertyChanged(nameof(CanRecordPayment));
 
+                await LoadPaymentDetailsAsync();
                 await LoadSalesData();
             }
             catch (Exception ex)

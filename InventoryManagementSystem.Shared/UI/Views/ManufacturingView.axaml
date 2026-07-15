@@ -126,6 +126,19 @@
                                         <TextBlock Text="Company" FontSize="11" FontWeight="SemiBold" Foreground="Gray"/>
                                         <TextBox Text="{Binding Company}" Watermark="Company name"/>
                                     </StackPanel>
+
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Spacing="5" Margin="0,0,0,12">
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                                            <StackPanel Spacing="5">
+                                                <TextBlock Text="Yield %" FontSize="11" FontWeight="SemiBold" Foreground="Gray"/>
+                                                <TextBox Text="{Binding YieldPercent}" Watermark="100"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="5">
+                                                <TextBlock Text="Scrap %" FontSize="11" FontWeight="SemiBold" Foreground="Gray"/>
+                                                <TextBox Text="{Binding ScrapPercent}" Watermark="0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
                                 </Grid>
 
                                 <TabControl Margin="0,10,0,0">
@@ -138,11 +151,12 @@
                                                 <StackPanel Spacing="6">
                                                     <!-- Table Header -->
                                                     <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,4,0,8">
-                                                        <Grid ColumnDefinitions="3*, 1*, 1*, Auto">
+                                                        <Grid ColumnDefinitions="3*, 1*, 1*, 1*, Auto">
                                                             <TextBlock Grid.Column="0" Text="Component" FontWeight="SemiBold" FontSize="12" Foreground="Gray"/>
                                                             <TextBlock Grid.Column="1" Text="Quantity" FontWeight="SemiBold" FontSize="12" Foreground="Gray" Margin="10,0"/>
-                                                            <TextBlock Grid.Column="2" Text="Unit" FontWeight="SemiBold" FontSize="12" Foreground="Gray" Margin="10,0"/>
-                                                            <TextBlock Grid.Column="3" Width="30"/>
+                                                            <TextBlock Grid.Column="2" Text="Scrap %" FontWeight="SemiBold" FontSize="12" Foreground="Gray" Margin="10,0"/>
+                                                            <TextBlock Grid.Column="3" Text="Unit" FontWeight="SemiBold" FontSize="12" Foreground="Gray" Margin="10,0"/>
+                                                            <TextBlock Grid.Column="4" Width="30"/>
                                                         </Grid>
                                                     </Border>
 
@@ -151,7 +165,7 @@
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
                                                                 <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,6">
-                                                                    <Grid ColumnDefinitions="3*, 1*, 1*, Auto">
+                                                                    <Grid ColumnDefinitions="3*, 1*, 1*, 1*, Auto">
                                                                         <!-- Component Picker -->
                                                                         <ComboBox Grid.Column="0" ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}" HorizontalAlignment="Stretch" PlaceholderText="Select component...">
                                                                             <ComboBox.ItemTemplate>
@@ -164,11 +178,14 @@
                                                                         <!-- Quantity -->
                                                                         <TextBox Grid.Column="1" Text="{Binding Quantity}" Margin="10,0" VerticalAlignment="Center"/>
 
+                                                                        <!-- Scrap -->
+                                                                        <TextBox Grid.Column="2" Text="{Binding ScrapPercent}" Margin="10,0" VerticalAlignment="Center"/>
+
                                                                         <!-- Unit -->
-                                                                        <ComboBox Grid.Column="2" ItemsSource="{Binding Units}" SelectedItem="{Binding Unit}" HorizontalAlignment="Stretch" Margin="10,0" VerticalAlignment="Center"/>
+                                                                        <ComboBox Grid.Column="3" ItemsSource="{Binding Units}" SelectedItem="{Binding Unit}" HorizontalAlignment="Stretch" Margin="10,0" VerticalAlignment="Center"/>
 
                                                                         <!-- Delete -->
-                                                                        <Button Grid.Column="3" Content="✕" Command="{Binding $parent[UserControl].((vm:ManufacturingViewModel)DataContext).RemoveComponentLineCommand}" CommandParameter="{Binding .}" Foreground="Red" Background="Transparent" FontSize="12" Padding="6,2" VerticalAlignment="Center"/>
+                                                                        <Button Grid.Column="4" Content="✕" Command="{Binding $parent[UserControl].((vm:ManufacturingViewModel)DataContext).RemoveComponentLineCommand}" CommandParameter="{Binding .}" Foreground="Red" Background="Transparent" FontSize="12" Padding="6,2" VerticalAlignment="Center"/>
                                                                     </Grid>
                                                                 </Border>
                                                             </DataTemplate>

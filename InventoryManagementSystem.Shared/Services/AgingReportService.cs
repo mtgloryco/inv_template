@@ -26,18 +26,24 @@ namespace InventoryManagementSystem.Services
             var creditNotes = await _databaseService.Connection.Table<CreditNote>()
                 .Where(c => !c.IsDeleted && c.Status == "Posted")
                 .ToListAsync();
+            var payments = await _databaseService.Connection.Table<InvoicePayment>()
+                .Where(p => !p.IsDeleted && p.DocumentType == "SalesOrder")
+                .ToListAsync();
+            var paymentTerms = await _databaseService.Connection.Table<PaymentTerm>().ToListAsync();
 
             var lines = new List<AgingLine>();
             foreach (var order in orders)
             {
                 var credits = creditNotes.Where(c => c.SalesOrderId == order.Id).Sum(c => c.Amount);
-                var openBalance = order.TotalAmount - credits;
+                var paid = payments.Where(p => p.DocumentId == order.Id).Sum(p => p.Amount);
+                var openBalance = order.TotalAmount - credits - paid;
                 if (openBalance <= 0)
                 {
                     continue;
                 }
 
-                var dueDate = order.OrderDate.Date.AddDays(ParseDueDays(order.PaymentTerms));
+                var dueDays = ResolveDueDays(order.PaymentTerms, paymentTerms);
+                var dueDate = order.OrderDate.Date.AddDays(dueDays);
                 var daysOverdue = Math.Max(0, (reportDate - dueDate).Days);
                 var customer = customers.FirstOrDefault(c => c.Id == order.CustomerId);
 
@@ -67,18 +73,24 @@ namespace InventoryManagementSystem.Services
             var debitNotes = await _databaseService.Connection.Table<DebitNote>()
                 .Where(d => !d.IsDeleted && d.Status == "Posted")
                 .ToListAsync();
+            var payments = await _databaseService.Connection.Table<InvoicePayment>()
+                .Where(p => !p.IsDeleted && p.DocumentType == "PurchaseOrder")
+                .ToListAsync();
+            var paymentTerms = await _databaseService.Connection.Table<PaymentTerm>().ToListAsync();
 
             var lines = new List<AgingLine>();
             foreach (var order in orders)
             {
                 var debits = debitNotes.Where(d => d.PurchaseOrderId == order.Id).Sum(d => d.Amount);
-                var openBalance = order.TotalAmount - debits;
+                var paid = payments.Where(p => p.DocumentId == order.Id).Sum(p => p.Amount);
+                var openBalance = order.TotalAmount - debits - paid;
                 if (openBalance <= 0)
                 {
                     continue;
                 }
 
-                var dueDate = order.OrderDate.Date.AddDays(ParseDueDays(order.PaymentTerms));
+                var dueDays = ResolveDueDays(order.PaymentTerms, paymentTerms);
+                var dueDate = order.OrderDate.Date.AddDays(dueDays);
                 var daysOverdue = Math.Max(0, (reportDate - dueDate).Days);
                 var supplier = suppliers.FirstOrDefault(s => s.Id == order.SupplierId);
 
@@ -128,6 +140,17 @@ namespace InventoryManagementSystem.Services
 
             var digits = new string(paymentTerms.Where(char.IsDigit).ToArray());
             return int.TryParse(digits, out var days) ? days : 30;
+        }
+
+        internal static int ResolveDueDays(string paymentTerms, List<PaymentTerm> terms)
+        {
+            var match = terms.FirstOrDefault(t => t.Name.Equals(paymentTerms, StringComparison.OrdinalIgnoreCase));
+            if (match != null && match.DueDays >= 0)
+            {
+                return match.DueDays;
+            }
+
+            return ParseDueDays(paymentTerms);
         }
 
         internal static string GetBucket(int daysOverdue) => daysOverdue switch

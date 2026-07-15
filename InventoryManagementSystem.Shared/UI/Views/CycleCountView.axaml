@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:InventoryManagementSystem.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+             x:Class="InventoryManagementSystem.UI.Views.CycleCountView"
+             x:DataType="vm:CycleCountViewModel">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Cycle Counts" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Physical inventory counts with variance posting to stock and journals." FontSize="13" Foreground="#6B7280" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,200,Auto,Auto,*,Auto" Margin="0,16,0,0">
+            <TextBlock Text="Location:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Locations}" SelectedItem="{Binding SelectedLocation}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Grid.Column="2" Content="New Draft Count" Command="{Binding CreateDraftCommand}" Background="#007ACC" Foreground="White" Margin="10,0,0,0" Padding="10,6"/>
+            <Button Grid.Column="3" Content="Refresh" Command="{Binding LoadCountsCommand}" Margin="10,0,0,0" Padding="10,6"/>
+            <Button Grid.Column="5" Content="Post Variances" Command="{Binding PostVariancesCommand}" IsEnabled="{Binding CanEditSelectedCount}" Background="#2E7D32" Foreground="White" Padding="10,6"/>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="320,*" Margin="0,16,0,0">
+            <Border BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="8">
+                <DataGrid ItemsSource="{Binding Counts}" SelectedItem="{Binding SelectedCount}" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Count #" Binding="{Binding CycleCount.CountNumber}" Width="*"/>
+                        <DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="*"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding CycleCount.Status}" Width="80"/>
+                        <DataGridTextColumn Header="Variance" Binding="{Binding TotalVarianceUnits}" Width="70"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <Border Grid.Column="1" Margin="12,0,0,0" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="8">
+                <Grid RowDefinitions="Auto,Auto,Auto,*">
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+                        <TextBlock Text="Count Lines" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button Content="Save Counts" Command="{Binding SaveLineCountsCommand}" IsEnabled="{Binding CanEditSelectedCount}" Background="#007ACC" Foreground="White" Padding="8,4"/>
+                    </StackPanel>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                        <ComboBox ItemsSource="{Binding AvailableProducts}" SelectedItem="{Binding SelectedProductToAdd}" IsEnabled="{Binding CanEditSelectedCount}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                        <Run Text="{Binding Name}"/>
+                                        <Run Text=" (" Foreground="Gray"/>
+                                        <Run Text="{Binding SKU}" Foreground="Gray"/>
+                                        <Run Text=")" Foreground="Gray"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Grid.Column="1" Content="Add Product" Command="{Binding AddProductLineCommand}" IsEnabled="{Binding CanEditSelectedCount}" Margin="8,0,0,0" Padding="8,4"/>
+                    </Grid>
+                    <TextBlock Grid.Row="2" Text="Workflow: edit Counted → Save Counts → Post Variances" FontSize="11" Foreground="#6B7280" Margin="0,0,0,8"/>
+                    <DataGrid Grid.Row="3" ItemsSource="{Binding Lines}" AutoGenerateColumns="False" IsReadOnly="{Binding !CanEditSelectedCount}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="System" Binding="{Binding SystemQuantity}" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Counted" Binding="{Binding CountedQuantity}" Width="90"/>
+                            <DataGridTextColumn Header="Variance" Binding="{Binding Variance}" Width="80" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="#6B7280" Margin="0,12,0,0"/>
+    </Grid>
+</UserControl>

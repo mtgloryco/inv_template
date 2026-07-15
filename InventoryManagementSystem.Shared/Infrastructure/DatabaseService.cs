@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using InventoryManagementSystem.Domain;
+using InventoryManagementSystem.Services;
 using SQLite;
 
 namespace InventoryManagementSystem.Infrastructure
@@ -12,7 +13,7 @@ namespace InventoryManagementSystem.Infrastructure
         private readonly string _databasePath;
         private readonly string _legacyDatabasePath;
         private SQLiteAsyncConnection _connection;
-        private const int CurrentDatabaseVersion = 4;
+        private const int CurrentDatabaseVersion = 6;
 
         public DatabaseService()
         {
@@ -110,6 +111,14 @@ namespace InventoryManagementSystem.Infrastructure
             await _connection.CreateTableAsync<Customer>();
             await _connection.CreateTableAsync<CreditNote>();
             await _connection.CreateTableAsync<DebitNote>();
+            await _connection.CreateTableAsync<InvoicePayment>();
+            await _connection.CreateTableAsync<BankStatement>();
+            await _connection.CreateTableAsync<BankStatementLine>();
+            await _connection.CreateTableAsync<ExchangeRate>();
+            await _connection.CreateTableAsync<BudgetLine>();
+            await _connection.CreateTableAsync<LandedCostCharge>();
+            await _connection.CreateTableAsync<CycleCount>();
+            await _connection.CreateTableAsync<CycleCountLine>();
 
             // 3. Perform Schema Migrations
             await PerformMigrationsAsync();
@@ -155,6 +164,16 @@ namespace InventoryManagementSystem.Infrastructure
                 if (metaVersion < 4)
                 {
                     await MigrateToV4Async();
+                }
+
+                if (metaVersion < 5)
+                {
+                    await MigrateToV5Async();
+                }
+
+                if (metaVersion < 6)
+                {
+                    await MigrateToV6Async();
                 }
 
                 await _connection.ExecuteAsync($"PRAGMA user_version = {CurrentDatabaseVersion}");
@@ -248,6 +267,30 @@ namespace InventoryManagementSystem.Infrastructure
         {
             await AddColumnIfNotExistsAsync("User", "PermissionsJson", "TEXT NOT NULL DEFAULT ''");
             await AddColumnIfNotExistsAsync("User", "LastLoginAt", "TEXT");
+        }
+
+        private async Task MigrateToV6Async()
+        {
+            await AddColumnIfNotExistsAsync("PurchaseBatch", "SerialNumber", "TEXT NOT NULL DEFAULT ''");
+            await AddColumnIfNotExistsAsync("ReorderRule", "LocationId", "INTEGER NOT NULL DEFAULT 0");
+            await AddColumnIfNotExistsAsync("BillOfMaterial", "YieldPercent", "REAL NOT NULL DEFAULT 100");
+            await AddColumnIfNotExistsAsync("BillOfMaterial", "ScrapPercent", "REAL NOT NULL DEFAULT 0");
+            await AddColumnIfNotExistsAsync("BillOfMaterialLine", "ScrapPercent", "REAL NOT NULL DEFAULT 0");
+        }
+
+        private async Task MigrateToV5Async()
+        {
+            await AddColumnIfNotExistsAsync("PaymentTerm", "DueDays", "INTEGER NOT NULL DEFAULT 0");
+
+            var terms = await _connection.Table<PaymentTerm>().ToListAsync();
+            foreach (var term in terms)
+            {
+                if (term.DueDays == 0 && !string.IsNullOrWhiteSpace(term.Name))
+                {
+                    term.DueDays = AgingReportService.ParseDueDays(term.Name);
+                    await _connection.UpdateAsync(term);
+                }
+            }
         }
 
         private async Task AddColumnIfNotExistsAsync(string table, string column, string definition)
@@ -589,10 +632,10 @@ namespace InventoryManagementSystem.Infrastructure
                 {
                     await _connection.InsertAllAsync(new PaymentTerm[]
                     {
-                        new() { Name = "Immediate Payment", Description = "Payment is due immediately" },
-                        new() { Name = "15 days", Description = "Payment is due within 15 days of invoice date" },
-                        new() { Name = "21 days", Description = "Payment is due within 21 days of invoice date" },
-                        new() { Name = "30 days", Description = "Payment is due within 30 days of invoice date" }
+                        new() { Name = "Immediate Payment", Description = "Payment is due immediately", DueDays = 0 },
+                        new() { Name = "15 days", Description = "Payment is due within 15 days of invoice date", DueDays = 15 },
+                        new() { Name = "21 days", Description = "Payment is due within 21 days of invoice date", DueDays = 21 },
+                        new() { Name = "30 days", Description = "Payment is due within 30 days of invoice date", DueDays = 30 }
                     });
                 }
 

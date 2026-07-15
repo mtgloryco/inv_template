@@ -20,6 +20,8 @@ namespace InventoryManagementSystem.UI.ViewModels
         private readonly SettingsService _settingsService;
         private readonly PurchaseOrderPdfService _pdfService;
         private readonly ReturnsService _returnsService;
+        private readonly PaymentService _paymentService;
+        private readonly CurrencyService _currencyService;
         private bool _isLoadingOrders;
 
         public LanguageService Language { get; }
@@ -37,11 +39,32 @@ namespace InventoryManagementSystem.UI.ViewModels
         [ObservableProperty] private string _detailedTaxBreakdownText = string.Empty;
         [ObservableProperty] private decimal _detailedSubtotal;
         [ObservableProperty] private decimal _detailedTotal;
+        [ObservableProperty] private string _detailedBaseCurrencyEquivalent = string.Empty;
+
+        [ObservableProperty] private decimal _detailedOpenBalance;
+        [ObservableProperty] private decimal _detailedAmountPaid;
+        [ObservableProperty] private ObservableCollection<InvoicePayment> _detailedPayments = new();
+        [ObservableProperty] private bool _isPaymentModalOpen;
+        [ObservableProperty] private decimal _paymentAmount;
+        [ObservableProperty] private string _paymentMethod = "Bank";
+        [ObservableProperty] private string _paymentReference = string.Empty;
+        [ObservableProperty] private string _paymentErrorMessage = string.Empty;
+
+        public List<string> PaymentMethods { get; } = new() { "Bank", "Cash", "Mobile Money" };
+        public string BaseCurrency => _settingsService.CurrentSettings.CurrencySymbol ?? "RWF";
+        public bool CanRecordPayment => IsBilled && DetailedOpenBalance > 0.01m;
 
         // Return Modal properties
         [ObservableProperty] private bool _isReturnModalOpen;
         [ObservableProperty] private ObservableCollection<PurchaseOrderReturnRow> _returnRows = new();
         [ObservableProperty] private string _returnErrorMessage = string.Empty;
+
+        // Receive Modal properties
+        [ObservableProperty] private bool _isReceiveModalOpen;
+        [ObservableProperty] private ObservableCollection<PurchaseReceiveRow> _receiveRows = new();
+        [ObservableProperty] private decimal _landedCostFreight;
+        [ObservableProperty] private decimal _landedCostDuties;
+        [ObservableProperty] private string _receiveErrorMessage = string.Empty;
 
         public bool CanReturnDetailedPo => DetailedPo != null && DetailedPo.ReceiptStatus != "Pending" && DetailedPo.Status != "Cancelled";
 
@@ -180,6 +203,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             TaxService taxService,
             SettingsService settingsService,
             ReturnsService returnsService,
+            PaymentService paymentService,
+            CurrencyService currencyService,
             LanguageService languageService)
         {
             _purchaseOrderService = purchaseOrderService;
@@ -188,6 +213,8 @@ namespace InventoryManagementSystem.UI.ViewModels
             _taxService = taxService;
             _settingsService = settingsService;
             _returnsService = returnsService;
+            _paymentService = paymentService;
+            _currencyService = currencyService;
             Language = languageService;
             _pdfService = new PurchaseOrderPdfService(_settingsService);
 
@@ -343,7 +370,10 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(CanValidate));
                 OnPropertyChanged(nameof(CanCreateBill));
                 OnPropertyChanged(nameof(CanReturnDetailedPo));
+                OnPropertyChanged(nameof(CanRecordPayment));
 
+                await LoadPaymentDetailsAsync();
+                await UpdateDetailedBaseCurrencyEquivalentAsync();
                 IsDetailsOpen = true;
             }
             catch (Exception ex)
@@ -426,6 +456,89 @@ namespace InventoryManagementSystem.UI.ViewModels
                     $"{tb.Tax.Name} ({tb.Tax.Amount}%): {tb.Amount:N2} {(tb.Tax.IncludedInPrice == "Include" ? "Incl." : "")}");
                 DetailedTaxBreakdownText = "Taxes breakdown:\n" + string.Join("\n", parts);
             }
+        }
+
+        private async Task UpdateDetailedBaseCurrencyEquivalentAsync()
+        {
+            if (DetailedPo == null)
+            {
+                DetailedBaseCurrencyEquivalent = string.Empty;
+                return;
+            }
+
+            var (_, label) = await _currencyService.TryFormatBaseEquivalentAsync(
+                DetailedTotal,
+                DetailedPo.Currency,
+                BaseCurrency,
+                DetailedPo.OrderDate);
+
+            DetailedBaseCurrencyEquivalent = label;
+        }
+
+        private async Task LoadPaymentDetailsAsync()
+        {
+            if (DetailedPo == null || DetailedPo.BillingStatus != "Billed")
+            {
+                DetailedOpenBalance = 0;
+                DetailedAmountPaid = 0;
+                DetailedPayments = new ObservableCollection<InvoicePayment>();
+                OnPropertyChanged(nameof(CanRecordPayment));
+                return;
+            }
+
+            DetailedAmountPaid = await _paymentService.GetAmountPaidAsync("PurchaseOrder", DetailedPo.Id);
+            DetailedOpenBalance = await _paymentService.GetOpenBalanceAsync("PurchaseOrder", DetailedPo.Id);
+            var payments = await _paymentService.GetPaymentsForDocumentAsync("PurchaseOrder", DetailedPo.Id);
+            DetailedPayments = new ObservableCollection<InvoicePayment>(payments);
+            OnPropertyChanged(nameof(CanRecordPayment));
+        }
+
+        [RelayCommand]
+        private void OpenRecordPayment()
+        {
+            if (!CanRecordPayment) return;
+            PaymentAmount = DetailedOpenBalance;
+            PaymentMethod = "Bank";
+            PaymentReference = string.Empty;
+            PaymentErrorMessage = string.Empty;
+            IsPaymentModalOpen = true;
+        }
+
+        [RelayCommand]
+        private async Task SubmitPayment()
+        {
+            PaymentErrorMessage = string.Empty;
+            if (DetailedPo == null) return;
+            if (PaymentAmount <= 0)
+            {
+                PaymentErrorMessage = "Payment amount must be greater than zero.";
+                return;
+            }
+
+            try
+            {
+                await _paymentService.RecordInvoicePaymentAsync(
+                    "PurchaseOrder",
+                    DetailedPo.Id,
+                    PaymentAmount,
+                    PaymentMethod,
+                    UserSession.CurrentUser?.Username ?? "System",
+                    reference: PaymentReference);
+
+                IsPaymentModalOpen = false;
+                await LoadPaymentDetailsAsync();
+                StatusMessage = $"Recorded payment of {PaymentAmount:N2} {DetailedPo.Currency} for {DetailedPo.PONumber}";
+            }
+            catch (Exception ex)
+            {
+                PaymentErrorMessage = ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        private void ClosePaymentModal()
+        {
+            IsPaymentModalOpen = false;
         }
 
         [RelayCommand]
@@ -541,28 +654,79 @@ namespace InventoryManagementSystem.UI.ViewModels
             try
             {
                 var dbItems = await _purchaseOrderService.GetItemsAsync(DetailedPo.Id);
-                var receivedItems = new List<(int itemId, int quantityReceived)>();
+                var products = await _inventoryService.GetAllProductsAsync();
+                ReceiveRows.Clear();
 
                 foreach (var item in dbItems)
                 {
                     int remaining = item.QuantityOrdered - item.QuantityReceived;
-                    if (remaining > 0)
-                    {
-                        receivedItems.Add((item.Id, remaining));
-                    }
+                    if (remaining <= 0) continue;
+
+                    var product = products.FirstOrDefault(p => p.Id == item.ProductId);
+                    ReceiveRows.Add(new PurchaseReceiveRow(item, product, remaining));
                 }
 
-                if (receivedItems.Any())
-                {
-                    await _purchaseOrderService.ReceivePurchaseOrderAsync(DetailedPo.Id, receivedItems);
-                    StatusMessage = $"Validated and received goods for {DetailedPo.PONumber}";
-                }
-                else
+                if (!ReceiveRows.Any())
                 {
                     StatusMessage = "All goods already received.";
+                    return;
                 }
 
-                // Refresh details
+                LandedCostFreight = 0;
+                LandedCostDuties = 0;
+                ReceiveErrorMessage = string.Empty;
+                IsReceiveModalOpen = true;
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Receipt preparation failed: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private async Task ConfirmReceive()
+        {
+            if (DetailedPo == null) return;
+            try
+            {
+                var receivedItems = new List<PurchaseReceiveLine>();
+                foreach (var row in ReceiveRows)
+                {
+                    if (row.QuantityToReceive <= 0) continue;
+
+                    BatchReceiveDetail? detail = null;
+                    if (row.RequiresLotTracking || row.RequiresSerialTracking)
+                    {
+                        detail = new BatchReceiveDetail
+                        {
+                            BatchNumber = row.BatchNumber,
+                            ExpiryDate = row.ExpiryDate?.DateTime
+                        };
+                        if (row.RequiresSerialTracking)
+                        {
+                            detail.SerialNumbers = row.SerialNumbers
+                                .Split(new[] { ',', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .ToList();
+                        }
+                    }
+
+                    receivedItems.Add(new PurchaseReceiveLine
+                    {
+                        ItemId = row.ItemId,
+                        QuantityReceived = row.QuantityToReceive,
+                        BatchDetail = detail
+                    });
+                }
+
+                var landedCosts = new List<LandedCostInput>();
+                if (LandedCostFreight > 0) landedCosts.Add(new LandedCostInput { CostType = "Freight", Amount = LandedCostFreight });
+                if (LandedCostDuties > 0) landedCosts.Add(new LandedCostInput { CostType = "Duties", Amount = LandedCostDuties });
+
+                await _purchaseOrderService.ReceivePurchaseOrderAsync(DetailedPo.Id, receivedItems, landedCosts);
+                StatusMessage = $"Validated and received goods for {DetailedPo.PONumber}";
+                IsReceiveModalOpen = false;
+
                 var updatedPo = (await _purchaseOrderService.GetAllPurchaseOrdersAsync())
                     .FirstOrDefault(x => x.PurchaseOrder.Id == DetailedPo.Id);
 
@@ -575,13 +739,19 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(IsBilled));
                 OnPropertyChanged(nameof(CanValidate));
                 OnPropertyChanged(nameof(CanCreateBill));
-
                 await LoadPurchaseOrders();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Receipt validation failed: {ex.Message}";
+                ReceiveErrorMessage = ex.Message;
             }
+        }
+
+        [RelayCommand]
+        private void CancelReceive()
+        {
+            IsReceiveModalOpen = false;
+            ReceiveErrorMessage = string.Empty;
         }
 
         [RelayCommand]
@@ -605,6 +775,10 @@ namespace InventoryManagementSystem.UI.ViewModels
                 OnPropertyChanged(nameof(IsBilled));
                 OnPropertyChanged(nameof(CanValidate));
                 OnPropertyChanged(nameof(CanCreateBill));
+                OnPropertyChanged(nameof(CanRecordPayment));
+
+                await LoadPaymentDetailsAsync();
+                await UpdateDetailedBaseCurrencyEquivalentAsync();
 
                 await LoadPurchaseOrders();
             }
@@ -1320,6 +1494,30 @@ namespace InventoryManagementSystem.UI.ViewModels
         private void SelectProduct(Product product)
         {
             SelectedProduct = product;
+        }
+    }
+
+    public partial class PurchaseReceiveRow : ObservableObject
+    {
+        public int ItemId { get; }
+        public string ProductName { get; }
+        public string Tracking { get; }
+        public bool RequiresLotTracking { get; }
+        public bool RequiresSerialTracking { get; }
+
+        [ObservableProperty] private int _quantityToReceive;
+        [ObservableProperty] private string _batchNumber = string.Empty;
+        [ObservableProperty] private string _serialNumbers = string.Empty;
+        [ObservableProperty] private DateTimeOffset? _expiryDate;
+
+        public PurchaseReceiveRow(PurchaseOrderItem item, Product? product, int remainingQty)
+        {
+            ItemId = item.Id;
+            ProductName = product?.Name ?? $"Product #{item.ProductId}";
+            Tracking = product?.Tracking ?? ProductTrackingModes.ByQuantity;
+            RequiresLotTracking = product != null && BatchTrackingService.RequiresLotTracking(product);
+            RequiresSerialTracking = product != null && BatchTrackingService.RequiresSerialTracking(product);
+            QuantityToReceive = remainingQty;
         }
     }
 }

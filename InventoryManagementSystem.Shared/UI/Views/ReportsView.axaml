@@ -22,19 +22,12 @@
         </Style>
     </UserControl.Styles>
     
-    <Grid RowDefinitions="Auto, *" Margin="30">
-        <!-- Header & Actions -->
-        <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,25">
-            <StackPanel Spacing="10">
+    <Grid ColumnDefinitions="260, *" RowDefinitions="Auto, *" Margin="30">
+        <!-- Header -->
+        <Grid Grid.ColumnSpan="2" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
+            <StackPanel Spacing="6">
                 <TextBlock Text="Reports &amp; Analytics" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryColor}" />
-                <TabStrip SelectedIndex="{Binding SelectedTabIndex}">
-                    <TabItem Header="Balance Sheet"/>
-                    <TabItem Header="Profit &amp; Loss"/>
-                    <TabItem Header="Stock Status"/>
-                    <TabItem Header="Stock History"/>
-                    <TabItem Header="AR Aging"/>
-                    <TabItem Header="AP Aging"/>
-                </TabStrip>
+                <TextBlock Text="Choose a category and report from the sidebar. Each report opens in its own view." FontSize="13" Foreground="{DynamicResource TextSecondaryColor}"/>
             </StackPanel>
             
             <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="1" VerticalAlignment="Center">
@@ -49,10 +42,52 @@
                  
                  <Button Content="Export to CSV" Command="{Binding ExportToCsvCommand}" Background="#007ACC" Foreground="White" Padding="15,8" CornerRadius="6"
                          IsVisible="{Binding IsStockStatusSelected}"/>
+                 <Button Content="Export VAT CSV" Command="{Binding ExportVatToCsvCommand}" Background="#007ACC" Foreground="White" Padding="15,8" CornerRadius="6"
+                         IsVisible="{Binding IsVatReturnSelected}"/>
             </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" BoxShadow="0 4 15 0 #10000000" BorderThickness="0" ClipToBounds="True">
+        <!-- Sidebar: category dropdown + report list -->
+        <Border Grid.Row="1" Grid.Column="0"
+                Background="{DynamicResource ContentBackgroundColor}"
+                CornerRadius="8"
+                BoxShadow="0 4 15 0 #10000000"
+                Padding="16"
+                Margin="0,0,16,0">
+            <StackPanel Spacing="14">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Report Category" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryColor}"/>
+                    <ComboBox ItemsSource="{Binding ReportCategories}"
+                              SelectedItem="{Binding SelectedCategory}"
+                              HorizontalAlignment="Stretch"/>
+                </StackPanel>
+
+                <Separator Height="1" Background="{DynamicResource BorderColor}"/>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Reports in Category" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryColor}"/>
+                    <ListBox ItemsSource="{Binding ReportsInCategory}"
+                             SelectedItem="{Binding SelectedReportNavItem}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             MinHeight="420">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:ReportNavItem">
+                                <Border Padding="10,8" CornerRadius="6" Margin="0,2">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryColor}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Report content screen -->
+        <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource ContentBackgroundColor}" CornerRadius="8" BoxShadow="0 4 15 0 #10000000" BorderThickness="0" ClipToBounds="True">
              <Grid RowDefinitions="Auto, *">
                   <Border Background="{DynamicResource PageBackgroundColor}" Padding="15" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1">
                       <TextBlock Text="{Binding ReportTitle}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryColor}" FontSize="16"/>
@@ -299,12 +334,113 @@
                               </DataGrid>
                           </StackPanel>
                       </ScrollViewer>
+
+                      <!-- VAT Return -->
+                      <ScrollViewer IsVisible="{Binding IsVatReturnSelected}" Margin="20">
+                          <StackPanel Spacing="16">
+                              <Grid ColumnDefinitions="Auto, Auto, Auto, *">
+                                  <StackPanel Spacing="5" Margin="0,0,15,0">
+                                      <TextBlock Text="Period Start" FontSize="12" FontWeight="SemiBold"/>
+                                      <DatePicker SelectedDate="{Binding VatPeriodStart}"/>
+                                  </StackPanel>
+                                  <StackPanel Spacing="5" Margin="0,0,15,0">
+                                      <TextBlock Text="Period End" FontSize="12" FontWeight="SemiBold"/>
+                                      <DatePicker SelectedDate="{Binding VatPeriodEnd}"/>
+                                  </StackPanel>
+                                  <Button Content="Compute VAT Return" Command="{Binding LoadVatReturnCommand}" Background="#007ACC" Foreground="White" Padding="12,8" VerticalAlignment="Bottom"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="*,*,*,*,*" IsVisible="{Binding VatSummary, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                  <Border Background="#E3F2FD" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Taxable Sales" FontSize="11"/><TextBlock Text="{Binding VatSummary.TaxableSales, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="1" Background="#E8F5E9" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Output VAT" FontSize="11"/><TextBlock Text="{Binding VatSummary.OutputVat, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="2" Background="#FFF8E1" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Taxable Purchases" FontSize="11"/><TextBlock Text="{Binding VatSummary.TaxablePurchases, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="3" Background="#FFE0B2" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Input VAT" FontSize="11"/><TextBlock Text="{Binding VatSummary.InputVat, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="4" Background="#FFCDD2" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Net VAT Payable" FontSize="11"/><TextBlock Text="{Binding VatSummary.NetVatPayable, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                              </Grid>
+                          </StackPanel>
+                      </ScrollViewer>
+
+                      <!-- Budget vs Actual -->
+                      <ScrollViewer IsVisible="{Binding IsBudgetVsActualSelected}" Margin="20">
+                          <StackPanel Spacing="16">
+                              <Grid ColumnDefinitions="Auto, Auto, Auto, *">
+                                  <StackPanel Spacing="5" Margin="0,0,15,0">
+                                      <TextBlock Text="Fiscal Year" FontSize="12" FontWeight="SemiBold"/>
+                                      <NumericUpDown Value="{Binding BudgetFiscalYear}" Minimum="2000" Maximum="2100" Width="120"/>
+                                  </StackPanel>
+                                  <StackPanel Spacing="5" Margin="0,0,15,0">
+                                      <TextBlock Text="Month (0 = annual)" FontSize="12" FontWeight="SemiBold"/>
+                                      <NumericUpDown Value="{Binding BudgetPeriodMonth}" Minimum="0" Maximum="12" Width="120"/>
+                                  </StackPanel>
+                                  <Button Content="Load Report" Command="{Binding LoadBudgetVsActualCommand}" Background="#007ACC" Foreground="White" Padding="12,8" VerticalAlignment="Bottom"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="*,*,*">
+                                  <Border Background="#E3F2FD" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Total Budget" FontSize="11"/><TextBlock Text="{Binding BudgetTotalBudget, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="1" Background="#E8F5E9" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Total Actual" FontSize="11"/><TextBlock Text="{Binding BudgetTotalActual, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                                  <Border Grid.Column="2" Background="#FFF8E1" Padding="12" CornerRadius="8" Margin="4"><StackPanel><TextBlock Text="Total Variance" FontSize="11"/><TextBlock Text="{Binding BudgetTotalVariance, StringFormat='{}{0:N2}'}" FontWeight="Bold"/></StackPanel></Border>
+                              </Grid>
+                              <DataGrid ItemsSource="{Binding BudgetVsActualLines}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                                  <DataGrid.Columns>
+                                      <DataGridTextColumn Header="Code" Binding="{Binding AccountCode}" Width="100"/>
+                                      <DataGridTextColumn Header="Account" Binding="{Binding AccountName}" Width="*"/>
+                                      <DataGridTextColumn Header="Type" Binding="{Binding AccountType}" Width="160"/>
+                                      <DataGridTextColumn Header="Budget" Binding="{Binding BudgetAmount, StringFormat='{}{0:N2}'}" Width="120"/>
+                                      <DataGridTextColumn Header="Actual" Binding="{Binding ActualAmount, StringFormat='{}{0:N2}'}" Width="120"/>
+                                      <DataGridTextColumn Header="Variance" Binding="{Binding Variance, StringFormat='{}{0:N2}'}" Width="120"/>
+                                      <DataGridTextColumn Header="Var %" Binding="{Binding VariancePercent, StringFormat='{}{0:N1}%'}" Width="80"/>
+                                  </DataGrid.Columns>
+                              </DataGrid>
+                          </StackPanel>
+                      </ScrollViewer>
+
+                      <!-- Bank Reconciliation -->
+                      <ScrollViewer IsVisible="{Binding IsBankReconciliationSelected}" Margin="20">
+                          <StackPanel Spacing="16">
+                              <Grid ColumnDefinitions="Auto, Auto, *">
+                                  <StackPanel Spacing="5" Margin="0,0,15,0">
+                                      <TextBlock Text="Bank Account" FontSize="12" FontWeight="SemiBold"/>
+                                      <ComboBox ItemsSource="{Binding ReconBankAccounts}" SelectedItem="{Binding SelectedReconBankAccount}" Width="280">
+                                          <ComboBox.ItemTemplate>
+                                              <DataTemplate x:DataType="vm:BankAccountDisplayRow">
+                                                  <TextBlock Text="{Binding AccountNumber}"/>
+                                              </DataTemplate>
+                                          </ComboBox.ItemTemplate>
+                                      </ComboBox>
+                                  </StackPanel>
+                                  <Button Content="Refresh" Command="{Binding LoadBankReconciliationCommand}" Background="#007ACC" Foreground="White" Padding="12,8" VerticalAlignment="Bottom"/>
+                                  <Button Grid.Column="2" Content="Import Statement" Command="{Binding OpenImportStatementCommand}" Background="#5C6BC0" Foreground="White" Padding="12,8" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="0,0,10,0"/>
+                                  <Button Grid.Column="2" Content="Match Selected" Command="{Binding MatchReconciliationCommand}" Background="#2E7D32" Foreground="White" Padding="12,8" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="140,0,0,0"/>
+                              </Grid>
+                              <TextBlock Text="{Binding ReconStatusMessage}" Foreground="Gray"/>
+                              <Grid ColumnDefinitions="*, 20, *">
+                                  <StackPanel Grid.Column="0" Spacing="8">
+                                      <TextBlock Text="Unreconciled Payments" FontWeight="Bold"/>
+                                      <DataGrid ItemsSource="{Binding UnreconciledPayments}" SelectedItem="{Binding SelectedReconPayment}" AutoGenerateColumns="False" IsReadOnly="True" Height="280">
+                                          <DataGrid.Columns>
+                                              <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="*"/>
+                                              <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                                              <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="100"/>
+                                          </DataGrid.Columns>
+                                      </DataGrid>
+                                  </StackPanel>
+                                  <StackPanel Grid.Column="2" Spacing="8">
+                                      <TextBlock Text="Unreconciled Statement Lines" FontWeight="Bold"/>
+                                      <DataGrid ItemsSource="{Binding UnreconciledStatementLines}" SelectedItem="{Binding SelectedReconLine}" AutoGenerateColumns="False" IsReadOnly="True" Height="280">
+                                          <DataGrid.Columns>
+                                              <DataGridTextColumn Header="Description" Binding="{Binding Label}" Width="*"/>
+                                              <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                                              <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="100"/>
+                                          </DataGrid.Columns>
+                                      </DataGrid>
+                                  </StackPanel>
+                              </Grid>
+                          </StackPanel>
+                      </ScrollViewer>
                   </Panel>
              </Grid>
         </Border>
 
         <!-- DETAILS MODAL -->
-        <Border Background="#44000000" Grid.RowSpan="2" IsVisible="{Binding IsDetailsModalOpen}">
+        <Border Background="#44000000" Grid.RowSpan="2" Grid.ColumnSpan="2" IsVisible="{Binding IsDetailsModalOpen}">
              <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" MinWidth="400" MinHeight="300" Width="600" Height="480" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="30" BoxShadow="0 10 40 0 #44000000" helpers:ResizableHelper.CanResize="True">
                   <Grid RowDefinitions="Auto, *, Auto">
                       <StackPanel Spacing="10">
@@ -349,7 +485,7 @@
         </Border>
 
         <!-- JOURNAL ENTRIES MODAL -->
-        <Border Background="#44000000" Grid.RowSpan="2" IsVisible="{Binding IsJournalModalOpen}">
+        <Border Background="#44000000" Grid.RowSpan="2" Grid.ColumnSpan="2" IsVisible="{Binding IsJournalModalOpen}">
              <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" MinWidth="750" MinHeight="450" Margin="40" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="25" BoxShadow="0 10 40 0 #44000000" helpers:ResizableHelper.CanResize="True">
                   <Grid RowDefinitions="Auto, *, Auto">
                       <StackPanel Spacing="10">
@@ -407,6 +543,54 @@
                       </Grid>
                   </Grid>
              </Border>
+        </Border>
+
+        <!-- Import Bank Statement Modal -->
+        <Border Background="#44000000" Grid.RowSpan="2" Grid.ColumnSpan="2" IsVisible="{Binding IsImportStatementModalOpen}">
+            <Border Background="{DynamicResource ContentBackgroundColor}" CornerRadius="12" Width="480" Padding="25" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Import Bank Statement" FontSize="18" FontWeight="Bold"/>
+                    <Grid ColumnDefinitions="*, *">
+                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                            <TextBlock Text="Statement Date" FontSize="11"/>
+                            <DatePicker SelectedDate="{Binding ImportStatementDate}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="Line Date" FontSize="11"/>
+                            <DatePicker SelectedDate="{Binding ImportLineDate}"/>
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*, *">
+                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                            <TextBlock Text="Opening Balance" FontSize="11"/>
+                            <TextBox Text="{Binding ImportOpeningBalance}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="Closing Balance" FontSize="11"/>
+                            <TextBox Text="{Binding ImportClosingBalance}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Line Description" FontSize="11"/>
+                        <TextBox Text="{Binding ImportLineDescription}"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*, *">
+                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                            <TextBlock Text="Line Amount" FontSize="11"/>
+                            <TextBox Text="{Binding ImportLineAmount}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="Reference" FontSize="11"/>
+                            <TextBox Text="{Binding ImportLineReference}"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding ImportErrorMessage}" Foreground="#D32F2F"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding CloseImportStatementCommand}"/>
+                        <Button Content="Import" Command="{Binding SubmitImportStatementCommand}" Background="#2E7D32" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </UserControl>

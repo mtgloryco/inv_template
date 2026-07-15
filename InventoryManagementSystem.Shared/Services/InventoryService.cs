@@ -20,6 +20,10 @@ namespace InventoryManagementSystem.Services
             _auditService = auditService;
         }
 
+        private ProductHistoryService? _productHistoryService;
+        public ProductHistoryService ProductHistory =>
+            _productHistoryService ??= new ProductHistoryService(_databaseService);
+
         // Product CRUD
         public async Task<List<Product>> GetAllProductsAsync()
         {
@@ -166,7 +170,8 @@ namespace InventoryManagementSystem.Services
             string? batchNumber = null,
             DateTime? expiryDate = null,
             string? qualityStatus = null,
-            bool postSalesRevenueJournal = true)
+            bool postSalesRevenueJournal = true,
+            List<string>? serialNumbers = null)
         {
             await _databaseService.Connection.RunInTransactionAsync(conn =>
             {
@@ -204,20 +209,15 @@ namespace InventoryManagementSystem.Services
                     SyncMetadataHelper.Touch(product);
                     conn.Update(product);
 
-                    var batch = new PurchaseBatch
+                    var receiveDetail = new BatchReceiveDetail
                     {
-                        ProductId = productId,
-                        QuantityPurchased = quantity,
-                        QuantityRemaining = quantity,
-                        CostPerUnit = customCost ?? product.Cost,
-                        PurchaseDate = DateTime.Now,
-                        BatchNumber = string.IsNullOrWhiteSpace(batchNumber)
-                            ? $"BATCH-{DateTime.Now:yyyyMMddHHmmss}-{Guid.NewGuid():N}"
-                            : batchNumber,
+                        BatchNumber = batchNumber ?? string.Empty,
                         ExpiryDate = expiryDate,
-                        QualityStatus = string.IsNullOrWhiteSpace(qualityStatus) ? "Good" : qualityStatus
+                        SerialNumbers = serialNumbers ?? new List<string>()
                     };
-                    conn.Insert(batch);
+                    BatchTrackingService.CreateBatchesOnReceive(
+                        conn, product, quantity, customCost ?? product.Cost, DateTime.Now,
+                        receiveDetail, $"BATCH-{productId}");
                 }
                 else if (type == "OUT")
                 {

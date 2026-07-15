@@ -72,7 +72,55 @@ namespace InventoryManagementSystem.Domain
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime? ExpiryDate { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
+        public string SerialNumber { get; set; } = string.Empty;
         public string QualityStatus { get; set; } = "Good";
+    }
+
+    public class LandedCostCharge
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int PurchaseOrderId { get; set; }
+        public string CostType { get; set; } = "Freight";
+        public decimal Amount { get; set; }
+        public DateTime AppliedDate { get; set; } = DateTime.Now;
+        public string Reference { get; set; } = string.Empty;
+    }
+
+    public class CycleCount : ISyncableEntity
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
+        public string CountNumber { get; set; } = string.Empty;
+        public int LocationId { get; set; }
+        public DateTime CountDate { get; set; } = DateTime.Today;
+        public string Status { get; set; } = "Draft";
+        public string CreatedByUsername { get; set; } = string.Empty;
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    public class CycleCountLine
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int CycleCountId { get; set; }
+        public int ProductId { get; set; }
+        public int SystemQuantity { get; set; }
+        public int CountedQuantity { get; set; }
+
+        [Ignore]
+        public int Variance => CountedQuantity - SystemQuantity;
+    }
+
+    public class CycleCountListItem
+    {
+        public CycleCount CycleCount { get; set; } = new();
+        public string LocationName { get; set; } = string.Empty;
+        public int LineCount { get; set; }
+        public int TotalVarianceUnits { get; set; }
     }
 
     public class SaleBatchUsage
@@ -215,6 +263,7 @@ namespace InventoryManagementSystem.Domain
         public int Id { get; set; }
 
         public int ProductId { get; set; }
+        public int LocationId { get; set; }
         public int PreferredSupplierId { get; set; }
 
         public int ReorderPoint { get; set; }
@@ -562,6 +611,108 @@ namespace InventoryManagementSystem.Domain
         [Unique]
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        /// <summary>Days after invoice/bill date until payment is due.</summary>
+        public int DueDays { get; set; }
+    }
+
+    public class InvoicePayment : ISyncableEntity
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public Guid SyncId { get; set; } = Guid.NewGuid();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsDeleted { get; set; }
+        public string PaymentNumber { get; set; } = string.Empty;
+        /// <summary>SalesOrder or PurchaseOrder</summary>
+        public string DocumentType { get; set; } = string.Empty;
+        public int DocumentId { get; set; }
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "RWF";
+        public DateTime PaymentDate { get; set; } = DateTime.Now;
+        public string PaymentMethod { get; set; } = "Bank";
+        public int? BankAccountId { get; set; }
+        public int? BankStatementLineId { get; set; }
+        public string Reference { get; set; } = string.Empty;
+        public string CreatedByUsername { get; set; } = string.Empty;
+    }
+
+    public class BankStatement
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int BankAccountId { get; set; }
+        public DateTime StatementDate { get; set; } = DateTime.Today;
+        public decimal OpeningBalance { get; set; }
+        public decimal ClosingBalance { get; set; }
+        public string Reference { get; set; } = string.Empty;
+        public DateTime ImportedAt { get; set; } = DateTime.Now;
+    }
+
+    public class BankStatementLine
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int BankStatementId { get; set; }
+        public DateTime TransactionDate { get; set; } = DateTime.Today;
+        public string Description { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Reference { get; set; } = string.Empty;
+        public bool IsReconciled { get; set; }
+        public int? MatchedPaymentId { get; set; }
+    }
+
+    public class ExchangeRate
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public string FromCurrency { get; set; } = string.Empty;
+        public string ToCurrency { get; set; } = string.Empty;
+        public decimal Rate { get; set; } = 1m;
+        public DateTime EffectiveDate { get; set; } = DateTime.Today;
+    }
+
+    public class BudgetLine
+    {
+        [PrimaryKey, AutoIncrement]
+        public int Id { get; set; }
+        public int FiscalYear { get; set; }
+        public int AccountId { get; set; }
+        /// <summary>1-12 for monthly budgets; 0 for annual total.</summary>
+        public int PeriodMonth { get; set; }
+        public decimal BudgetAmount { get; set; }
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    public class VatReturnSummary
+    {
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public decimal OutputVat { get; set; }
+        public decimal InputVat { get; set; }
+        public decimal NetVatPayable => OutputVat - InputVat;
+        public decimal TaxableSales { get; set; }
+        public decimal TaxablePurchases { get; set; }
+    }
+
+    public class BudgetVsActualLine
+    {
+        public string AccountCode { get; set; } = string.Empty;
+        public string AccountName { get; set; } = string.Empty;
+        public string AccountType { get; set; } = string.Empty;
+        public decimal BudgetAmount { get; set; }
+        public decimal ActualAmount { get; set; }
+        public decimal Variance => ActualAmount - BudgetAmount;
+        public decimal VariancePercent => BudgetAmount == 0 ? 0 : Math.Round(Variance / BudgetAmount * 100, 1);
+    }
+
+    public class ReconciliationCandidate
+    {
+        public InvoicePayment? Payment { get; set; }
+        public BankStatementLine? StatementLine { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public bool IsMatched { get; set; }
     }
 
     public class BillOfMaterial : ISyncableEntity
@@ -576,6 +727,10 @@ namespace InventoryManagementSystem.Domain
         public string Reference { get; set; } = string.Empty;
         public string BomType { get; set; } = "Manufacture this product";
         public string Company { get; set; } = "My Company";
+        /// <summary>Expected finished-goods yield percent (e.g. 95 = 95% output).</summary>
+        public double YieldPercent { get; set; } = 100.0;
+        /// <summary>Overall scrap allowance on the finished product run.</summary>
+        public double ScrapPercent { get; set; } = 0.0;
     }
 
     public class BillOfMaterialLine : ISyncableEntity
@@ -589,6 +744,8 @@ namespace InventoryManagementSystem.Domain
         public int ProductId { get; set; }
         public double Quantity { get; set; } = 1.0;
         public string Unit { get; set; } = "Pcs";
+        /// <summary>Component scrap percent added on top of base BOM quantity.</summary>
+        public double ScrapPercent { get; set; } = 0.0;
     }
 
     public class BillOfMaterialListItem

@@ -37,7 +37,8 @@ public partial class App : Application
                     services.bundle, services.audit, services.reporting, services.cloudSync,
                     services.briefing, services.tax, services.account, services.journal, services.accountingReport,
                     services.manufacturing, services.payment, services.industryTemplateService,
-                    services.customFieldService, services.customerService, services.barcodeService, services.agingReportService),
+                    services.customFieldService, services.customerService, services.barcodeService, services.agingReportService,
+                    services.vatExportService, services.budgetReportService, services.currencyService, services.cycleCountService),
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
@@ -52,7 +53,8 @@ public partial class App : Application
                     services.bundle, services.audit, services.reporting, services.cloudSync,
                     services.briefing, services.tax, services.account, services.journal, services.accountingReport,
                     services.manufacturing, services.payment, services.industryTemplateService,
-                    services.customFieldService, services.customerService, services.barcodeService, services.agingReportService),
+                    services.customFieldService, services.customerService, services.barcodeService, services.agingReportService,
+                    services.vatExportService, services.budgetReportService, services.currencyService, services.cycleCountService),
             };
         }
 
@@ -69,7 +71,9 @@ public partial class App : Application
         TaxService tax, AccountService account, JournalService journal, AccountingReportService accountingReport,
         ManufacturingService manufacturing, PaymentService payment, IndustryTemplateService industryTemplateService,
         CustomFieldService customFieldService, CustomerService customerService,
-        BarcodeService barcodeService, AgingReportService agingReportService) InitializeServices()
+        BarcodeService barcodeService, AgingReportService agingReportService,
+        VatExportService vatExportService, BudgetReportService budgetReportService,
+        CurrencyService currencyService, CycleCountService cycleCountService) InitializeServices()
     {
         // Initialize Database
         var dbService = new DatabaseService();
@@ -103,12 +107,16 @@ public partial class App : Application
         var journalService = new JournalService(dbService);
         var accountingReportService = new AccountingReportService(dbService);
         var manufacturingService = new ManufacturingService(dbService);
-        var paymentService = new PaymentService(dbService);
+        var paymentService = new PaymentService(dbService, auditService);
         var customFieldService = new CustomFieldService(dbService);
         var customerService = new CustomerService(dbService);
         var industryTemplateService = new IndustryTemplateService(dbService);
         var barcodeService = new BarcodeService(dbService);
         var agingReportService = new AgingReportService(dbService);
+        var vatExportService = new VatExportService(dbService);
+        var budgetReportService = new BudgetReportService(dbService);
+        var currencyService = new CurrencyService(dbService);
+        var cycleCountService = new CycleCountService(dbService);
 
         // Apply any previously-saved terminology overrides immediately so the UI reflects them from startup
         languageService.SetTerminologyOverrides(settingsService.CurrentSettings.TerminologyOverrides);
@@ -128,7 +136,8 @@ public partial class App : Application
             expiryService, locationService, returnsService, advancedAnalyticsService,
             bundleService, auditService, reportingService, cloudSyncService, dailyBriefingService,
             taxService, accountService, journalService, accountingReportService, manufacturingService, paymentService,
-            industryTemplateService, customFieldService, customerService, barcodeService, agingReportService);
+            industryTemplateService, customFieldService, customerService, barcodeService, agingReportService,
+            vatExportService, budgetReportService, currencyService, cycleCountService);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

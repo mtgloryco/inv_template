@@ -151,6 +151,50 @@ namespace InventoryManagementSystem.Services
             }
         }
 
+        public static double CalculateComponentQuantity(
+            double bomOutputQty,
+            double bomLineQty,
+            double moTargetQty,
+            double bomYieldPercent,
+            double lineScrapPercent,
+            double bomScrapPercent = 0)
+        {
+            if (bomOutputQty <= 0 || moTargetQty <= 0) return 0;
+
+            var yieldFactor = bomYieldPercent <= 0 ? 1.0 : bomYieldPercent / 100.0;
+            var scrapFactor = 1.0 + ((lineScrapPercent + bomScrapPercent) / 100.0);
+            var scaledTarget = moTargetQty / yieldFactor;
+            return bomLineQty * (scaledTarget / bomOutputQty) * scrapFactor;
+        }
+
+        public async Task<List<ManufacturingOrderLine>> BuildExpectedLinesFromBomAsync(int bomId, double targetQuantity)
+        {
+            var bom = await _databaseService.Connection.FindAsync<BillOfMaterial>(bomId);
+            if (bom == null) return new List<ManufacturingOrderLine>();
+
+            var lines = await GetBomLinesAsync(bomId);
+            var products = await _databaseService.Connection.Table<Product>().ToListAsync();
+            var result = new List<ManufacturingOrderLine>();
+
+            foreach (var line in lines)
+            {
+                var product = products.FirstOrDefault(p => p.Id == line.ProductId);
+                var expectedQty = CalculateComponentQuantity(
+                    bom.Quantity, line.Quantity, targetQuantity, bom.YieldPercent, line.ScrapPercent, bom.ScrapPercent);
+
+                result.Add(new ManufacturingOrderLine
+                {
+                    ProductId = line.ProductId,
+                    ExpectedQuantity = expectedQty,
+                    ActualQuantity = expectedQty,
+                    Unit = line.Unit,
+                    UnitCost = product?.Cost ?? 0m
+                });
+            }
+
+            return result;
+        }
+
         public async Task ProduceManufacturingOrderAsync(int orderId, double actualQty, List<ManufacturingOrderLine> actualLines, string username)
         {
             await _databaseService.Connection.RunInTransactionAsync(conn =>
@@ -159,11 +203,14 @@ namespace InventoryManagementSystem.Services
                 if (order == null) throw new Exception("Manufacturing order not found.");
                 if (order.Status != "Confirmed") throw new Exception("Only confirmed manufacturing orders can be processed.");
 
+                var bom = conn.Find<BillOfMaterial>(order.BomId);
                 var finishedProduct = conn.Find<Product>(order.ProductId);
                 if (finishedProduct == null) throw new Exception($"Finished Product ID {order.ProductId} not found.");
 
                 var units = conn.Table<ProductUnit>().ToList();
                 decimal totalCostSum = 0m;
+                var yieldFactor = bom == null || bom.YieldPercent <= 0 ? 1.0 : bom.YieldPercent / 100.0;
+                var effectiveOutputQty = actualQty * yieldFactor;
 
                 // 1. Deduct component quantities from stock and insert OUT stock movements
                 foreach (var line in actualLines)
@@ -209,11 +256,11 @@ namespace InventoryManagementSystem.Services
 
                 // 2. Add finished product quantity to stock and insert IN stock movement
                 var finishedPreviousStock = finishedProduct.StockQuantity;
-                finishedProduct.StockQuantity += (int)Math.Round(actualQty);
+                finishedProduct.StockQuantity += (int)Math.Round(effectiveOutputQty);
                 conn.Update(finishedProduct);
                 LocationStockSync.ApplyDelta(conn, finishedProduct.Id, finishedProduct.StockQuantity - finishedPreviousStock);
 
-                decimal unitCostOfFinishedProduct = actualQty > 0 ? totalCostSum / (decimal)actualQty : 0m;
+                decimal unitCostOfFinishedProduct = effectiveOutputQty > 0 ? totalCostSum / (decimal)effectiveOutputQty : 0m;
                 
                 // Update product unit cost/selling price optionally, but standard is updating inventory asset cost
                 finishedProduct.Cost = unitCostOfFinishedProduct;
@@ -222,7 +269,7 @@ namespace InventoryManagementSystem.Services
                 conn.Insert(new StockMovement
                 {
                     ProductId = finishedProduct.Id,
-                    QuantityChanged = (int)Math.Round(actualQty),
+                    QuantityChanged = (int)Math.Round(effectiveOutputQty),
                     MovementType = "IN",
                     Reason = $"Manufacturing Production - {order.MONumber}",
                     Date = DateTime.Now,
@@ -231,7 +278,7 @@ namespace InventoryManagementSystem.Services
                 });
 
                 // Update order state
-                order.ActualQuantity = actualQty;
+                order.ActualQuantity = effectiveOutputQty;
                 order.Status = "Done";
                 order.ProduceDate = DateTime.Now;
                 order.TotalCost = totalCostSum;

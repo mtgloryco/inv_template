@@ -26,6 +26,11 @@ namespace InventoryManagementSystem.Services
 
         public async Task CreatePaymentTermAsync(PaymentTerm term)
         {
+            if (term.DueDays == 0 && !string.IsNullOrWhiteSpace(term.Name))
+            {
+                term.DueDays = AgingReportService.ParseDueDays(term.Name);
+            }
+
             await _databaseService.Connection.InsertAsync(term);
         }
 
@@ -264,34 +269,8 @@ namespace InventoryManagementSystem.Services
                         decimal cogsAmount = 0;
                         if (product.ProductType == "Good")
                         {
-                            int remainingToDeduct = line.quantityDelivered;
-                            var batches = conn.Table<PurchaseBatch>()
-                                              .Where(b => b.ProductId == product.Id && b.QuantityRemaining > 0)
-                                              .OrderBy(b => b.PurchaseDate)
-                                              .ToList();
-
-                            foreach (var batch in batches)
-                            {
-                                if (remainingToDeduct <= 0) break;
-
-                                int deductFromThisBatch = Math.Min(batch.QuantityRemaining, remainingToDeduct);
-
-                                var usage = new SaleBatchUsage
-                                {
-                                    StockMovementId = movement.Id,
-                                    PurchaseBatchId = batch.Id,
-                                    QuantityUsed = deductFromThisBatch,
-                                    CostPerUnit = batch.CostPerUnit
-                                };
-                                conn.Insert(usage);
-
-                                cogsAmount += deductFromThisBatch * batch.CostPerUnit;
-
-                                batch.QuantityRemaining -= deductFromThisBatch;
-                                conn.Update(batch);
-
-                                remainingToDeduct -= deductFromThisBatch;
-                            }
+                            cogsAmount = BatchTrackingService.DeductBatchesOnIssue(
+                                conn, product, line.quantityDelivered, movement.Id);
                         }
 
                         // --- Double Entry Journal Entry ---
