@@ -97,6 +97,18 @@ On first launch you may see the setup wizard and license screen. Activate a **Pr
 dotnet test
 ```
 
+### Windows installer (share with customers)
+
+See **[docs/WINDOWS_INSTALL.md](docs/WINDOWS_INSTALL.md)** for building `GloryDesk_Setup_v1.0.0_Windows.exe` and fixing the VC++ side-by-side error.
+
+Quick build on Windows:
+
+```powershell
+.\scripts\publish_win.ps1
+```
+
+Share **`Releases\GloryDesk_Setup_v1.0.0_Windows.exe`**.
+
 ---
 
 ## Project structure

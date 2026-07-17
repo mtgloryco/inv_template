@@ -1,0 +1,39 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    name: Glory Desk Windows Setup
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build installer
+        shell: pwsh
+        run: ./scripts/publish_win.ps1
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: GloryDesk-Windows-Portable
+          path: Releases/GloryDesk_Windows.zip
+
+      - name: Upload setup exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: GloryDesk-Windows-Setup
+          path: Releases/GloryDesk_Setup_v1.0.1_Windows.exe
