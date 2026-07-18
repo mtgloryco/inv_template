@@ -1,0 +1,16 @@
+# dependencies
+/node_modules
+/.next
+/out
+
+# env (never commit secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# vercel
+.vercel
+
+# debug
+npm-debug.log*

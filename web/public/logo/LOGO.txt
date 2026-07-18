@@ -1,0 +1,5 @@
+Place your MT GLORY company logo here:
+
+  mtglory_logo.png   (used by header, footer, admin)
+
+The site loads this file first from /logo/mtglory_logo.png
