@@ -1,8 +1,0 @@
-Drop your company logo here:
-
-  logo.png   (recommended — square, at least 256×256)
-  logo.svg   (optional vector)
-
-The site loads logo.png first, then logo.svg, then a built-in amber placeholder.
-
-Used in the header, footer, and admin sidebar.

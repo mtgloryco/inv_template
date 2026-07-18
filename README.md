@@ -4,9 +4,11 @@
 
 Glory Desk is a desktop business management app by **MT GLORY CO**. It helps shops and growing companies run inventory, point of sale, purchases, sales, accounting, and reporting from a single workspace — without the complexity of traditional ERP jargon.
 
-- **Product site:** [glorydesk.mtglory.com](https://glorydesk.mtglory.com)
+- **Product site:** [glorydesk.mtglory.com](https://glorydesk.mtglory.com) — **private repo** [`mtgloryco/glorydesk-web`](https://github.com/mtgloryco/glorydesk-web) (Next.js on Vercel)
 - **License & docs:** [glorydesk.mtglory.com/activate](https://glorydesk.mtglory.com/activate) · [glorydesk.mtglory.com/docs](https://glorydesk.mtglory.com/docs)
 - **Support:** support@mtglory.com
+
+The license portal lives in a **separate private repository** (not in this repo). See **[docs/WEB_PORTAL.md](docs/WEB_PORTAL.md)**.
 
 ---
 
@@ -118,6 +120,7 @@ Share **`Releases\GloryDesk_Setup_v1.0.0_Windows.exe`**.
 | `InventoryManagementSystem.Desktop` | Avalonia desktop app (Glory Desk UI) |
 | `InventoryManagementSystem.Shared` | Domain, services, views, view models |
 | `InventoryManagementSystem.Cloud` | Cloud API for sync, auth, and backup |
+| `web` | **License portal** (Next.js) — deploy to **Vercel** |
 | `InventoryManagementSystem.Tests` | Integration and phase tests |
 
 User data is stored locally:
